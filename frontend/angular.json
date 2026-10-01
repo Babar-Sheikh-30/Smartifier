@@ -1,0 +1,17 @@
+{
+  "$schema": "../node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "cli": { "analytics": false, "packageManager": "npm" },
+  "projects": {
+    "smartifier": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "bs",
+      "schematics": {
+        "@schematics/angular:component": { "standalone": true, "style": "scss" }
+      }
+    }
+  }
+}
