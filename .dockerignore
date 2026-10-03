@@ -1,0 +1,9 @@
+target/
+frontend/
+node_modules/
+.git/
+.github/
+.idea/
+.vscode/
+*.log
+.DS_Store
