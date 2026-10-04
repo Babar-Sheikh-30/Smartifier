@@ -1,0 +1,24 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: smartifier-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - smartifier_mongo_data:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sheikhbabar/smartifier-backend:latest
+    container_name: smartifier-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_MONGODB_URI: mongodb://mongo:27017/smartifier
+    depends_on:
+      - mongo
+
+volumes:
+  smartifier_mongo_data:
