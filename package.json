@@ -3,7 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "description": "Smartifier by Byte Solutions",
-  "workspaces": ["frontend"],
-  "engines": { "node": "^20.19.0 || ^22.12.0 || ^24.0.0" },
-  "scripts": { "ng": "npm run ng --workspace @byte-solutions/smartifier-frontend --" }
+  "workspaces": [
+    "frontend"
+  ],
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
+  },
+  "scripts": {
+    "ng": "npm run ng --workspace @byte-solutions/smartifier-frontend --",
+    "build": "npm run ng -- build",
+    "start": "npm run ng -- serve",
+    "format": "prettier --write \"frontend/src/**/*.{ts,html,scss}\" \"frontend/*.json\" \"src/main/resources/templates/**/*.html\" package.json .prettierrc.json",
+    "format:check": "prettier --check \"frontend/src/**/*.{ts,html,scss}\" \"frontend/*.json\" \"src/main/resources/templates/**/*.html\" package.json .prettierrc.json"
+  },
+  "devDependencies": {
+    "prettier": "3.9.9"
+  }
 }

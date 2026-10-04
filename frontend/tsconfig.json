@@ -13,6 +13,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "rootDir": "./src",
     "outDir": "./dist/out-tsc"
   },
   "angularCompilerOptions": {

@@ -9,6 +9,38 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "bs",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/main.ts",
+            "index": "src/index.html",
+            "tsConfig": "tsconfig.app.json",
+            "styles": ["src/styles.scss"],
+            "outputPath": { "base": "dist", "browser": "" },
+            "outputHashing": "none"
+          },
+          "configurations": {
+            "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": { "minify": false, "inlineCritical": false },
+                "fonts": true
+              },
+              "budgets": [{ "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }]
+            },
+            "development": { "optimization": false, "sourceMap": true }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "development": { "buildTarget": "smartifier:build:development" }
+          },
+          "defaultConfiguration": "development"
+        }
+      },
       "schematics": {
         "@schematics/angular:component": { "standalone": true, "style": "scss" }
       }

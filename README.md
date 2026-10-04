@@ -1,6 +1,6 @@
 # Smartifier — Byte Solutions
 
-Project setup based on ByteMe's Maven folder layout, adapted for Byte Solutions with a separate Angular frontend. This repository contains dependency configuration and empty source folders only. No application or test code has been created.
+Project setup based on ByteMe's Maven folder layout, adapted for Byte Solutions with a separate Angular frontend. The landing page uses a Spring Boot and Thymeleaf shell with Angular content and an interactive knowledge-stack message preview.
 
 ## Layout
 
@@ -79,6 +79,7 @@ $env:MAVEN_USER_HOME = Join-Path $PWD '.m2'
 
 Maven libraries are cached in `.m2/repository` via `.mvn/maven.config`. The existing `mvn.cmd` shortcut also works with the Maven installation in `.tools`.
 
-There are no tests yet, so Maven reports no sources or tests and verifies the build configuration. Angular's workspace is registered, but entry points and build/serve/test targets are intentionally deferred until application code is requested. Neither application is runnable yet.
+After installing dependencies with `npm.cmd ci`, start the complete application with `.\mvn.cmd spring-boot:run` and open http://localhost:8080. Maven builds Angular into `frontend/dist/` and copies its assets into `target/classes/static/app/`; generated Angular files stay outside the source tree. Run `.\mvn.cmd clean package` to build and package both parts in one command. For frontend live reload, use `npm.cmd start` and open http://localhost:4200.
 
 For the Angular folder conventions, see [frontend/README.md](frontend/README.md).
+
