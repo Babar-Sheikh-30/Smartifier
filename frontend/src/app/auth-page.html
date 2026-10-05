@@ -1,0 +1,83 @@
+<header class="navigation wrap">
+  <a class="brand" routerLink="/">Smartifier<span class="brand-dot">.</span></a>
+  <a class="text-link" routerLink="/">Back to home</a>
+</header>
+<main class="account-page wrap">
+  <section class="account-card" aria-labelledby="auth-title">
+    <p class="eyebrow">{{ registering ? 'JOIN SMARTIFIER' : 'WELCOME BACK' }}</p>
+    <h1 id="auth-title">{{ registering ? 'Create your account' : 'Log in' }}</h1>
+    <p class="account-intro">
+      {{ registering ? 'A little more knowledge starts here.' : 'Sign in to your Smartifier
+      account.' }}
+    </p>
+    @if (!registering && route.snapshot.queryParamMap.has('registered')) {
+    <p class="form-success" role="status">Your account is ready. Log in to continue.</p>
+    } @if (route.snapshot.queryParamMap.has('unavailable')) {
+    <p class="form-error" role="alert">
+      Could not check your session. Please try signing in again.
+    </p>
+    } @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+    }
+    <form #form="ngForm" (ngSubmit)="submit()">
+      @if (registering) {
+      <label for="name">Name</label>
+      <input
+        id="name"
+        name="name"
+        autocomplete="name"
+        required
+        maxlength="100"
+        [(ngModel)]="name"
+      />
+      }
+      <label for="email">Email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        autocomplete="username"
+        required
+        email
+        maxlength="254"
+        [(ngModel)]="email"
+      />
+      <label for="password">Password</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        [attr.autocomplete]="registering ? 'new-password' : 'current-password'"
+        required
+        [minlength]="registering ? 12 : 1"
+        [maxlength]="registering ? 64 : 256"
+        [(ngModel)]="password"
+        [attr.aria-describedby]="registering ? 'password-hint' : null"
+      />
+      @if (registering) {
+      <p id="password-hint" class="field-hint">
+        Use 12–64 characters. Longer passwords are stronger.
+      </p>
+      <label for="confirm">Confirm password</label>
+      <input
+        id="confirm"
+        name="passwordConfirmation"
+        type="password"
+        autocomplete="new-password"
+        required
+        maxlength="64"
+        [(ngModel)]="passwordConfirmation"
+      />
+      }
+      <button class="button" type="submit" [disabled]="form.invalid || busy()">
+        {{ busy() ? 'Please wait…' : registering ? 'Create account' : 'Log in' }}
+      </button>
+    </form>
+    <p class="account-switch">
+      {{ registering ? 'Already have an account?' : 'New to Smartifier?' }}
+      <a class="text-link" [routerLink]="registering ? '/login' : '/register'"
+        >{{ registering ? 'Log in' : 'Create an account' }}</a
+      >
+    </p>
+  </section>
+</main>

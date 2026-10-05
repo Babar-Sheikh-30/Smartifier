@@ -6,12 +6,11 @@ From the repository root:
 
 ```powershell
 npm.cmd ci
-$env:MAVEN_USER_HOME = Join-Path $PWD '.m2'
-.\mvnw.cmd spring-boot:run
+.\start-local.ps1 -SetupAdmin
 ```
 
 Open http://localhost:8080 for the combined Thymeleaf and Angular page. Maven builds Angular into `frontend/dist/`, then copies the generated files into `target/classes/static/app/`. Both output folders are ignored by Git. Restart through Maven after frontend changes to rebuild and copy the assets. CSS remains unminified for readability.
 
-Run `.\mvnw.cmd clean package` to build the frontend and package the complete application in one command (after installing dependencies and setting `MAVEN_USER_HOME` as above). For a frontend-only build, use `npm.cmd run build`. This only updates `frontend/dist/`; restart through Maven to copy the changes into Spring Boot's asset folder.
+Use `.\start-local.ps1` on subsequent launches. Local MongoDB must be running. The first launch prompts for an admin email/password; later launches use the stored account. See the root README for account setup and testing. Run `.\mvnw.cmd clean package` with `JAVA_HOME` set to JDK 25 to package both parts. For a frontend-only build, use `npm.cmd run build`; restart through Maven to copy the changes into Spring Boot's asset folder.
 
-For frontend development with live reload, run `npm.cmd start` and open http://localhost:4200. This uses Angular's development HTML shell. The message preview uses illustrative stacks and local UI state. It does not create memberships, save subscriptions, or send SMS messages.
+For frontend development with live reload, keep Spring Boot running on port 8080, run `npm.cmd start` in another terminal, and open http://localhost:4200. Angular proxies `/api/**` to the backend. Registration creates members in MongoDB, and login directs members/admins to protected dashboard placeholders. The message preview uses illustrative stacks and local UI state. Subscriptions and SMS delivery are not implemented yet.
