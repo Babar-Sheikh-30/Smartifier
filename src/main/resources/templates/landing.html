@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8" />
+    <title th:text="${pageTitle}">Smartifier</title>
+    <base href="/" th:href="@{/}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Become a Smartifier member, subscribe to a knowledge stack, and receive knowledge by text. Premium offers more messages and customization."
+    />
+    <link rel="stylesheet" href="/app/styles.css" th:href="@{/app/styles.css}" />
+  </head>
+  <body>
+    <bs-root></bs-root>
+    <noscript
+      >Smartifier delivers knowledge-stack text messages to members. Enable JavaScript to explore
+      the interactive landing page.</noscript
+    >
+    <script type="module" src="/app/main.js" th:src="@{/app/main.js}"></script>
+  </body>
+</html>

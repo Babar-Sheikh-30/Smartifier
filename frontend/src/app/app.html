@@ -1,0 +1,151 @@
+﻿<header class="navigation wrap">
+  <a class="brand" href="#home" aria-label="Smartifier home"
+    ><span class="brand-icon">S<span>✦</span></span
+    >Smartifier<span class="brand-dot">.</span></a
+  >
+  <nav aria-label="Main navigation">
+    <a href="#stacks">Knowledge stacks</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#membership">Membership</a>
+    <a class="button button-small button-outline" href="/login">Log in</a>
+    <a class="button button-small" href="/register">Register</a>
+  </nav>
+</header>
+<main id="home">
+  <section class="hero wrap" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="status-dot"></span> A LITTLE KNOWLEDGE, DELIVERED BY TEXT</p>
+      <h1 id="hero-title">Stay curious.<br />Get <span class="accent">Smartifier.</span></h1>
+      <p class="intro">
+        Become a member, subscribe to a knowledge stack, and receive bite-sized knowledge in text
+        messages. Choose a subject that interests you and keep learning from your phone.
+      </p>
+      <div class="hero-actions">
+        <a class="button" href="#stacks"
+          >Explore knowledge stacks <span aria-hidden="true">↗</span></a
+        >
+        <a class="text-link" href="#membership"
+          >Compare memberships <span aria-hidden="true">↓</span></a
+        >
+      </div>
+      <p class="hero-note">
+        Limited messages for members. More messages and customization with Premium.
+      </p>
+    </div>
+    <div class="demo-scene" id="demo">
+      <div class="floating-note"><span aria-hidden="true">✦</span> Curiosity meets your inbox.</div>
+      <section class="dashboard" aria-labelledby="demo-title">
+        <div class="dashboard-top">
+          <span class="mini-brand">S✦</span><span>TEXT MESSAGE PREVIEW</span
+          ><span class="avatar">SMS</span>
+        </div>
+        <div class="dashboard-body">
+          <p class="muted">EXAMPLE KNOWLEDGE STACK</p>
+          <h2 id="demo-title">{{ selectedStack().name }}</h2>
+          <p class="dashboard-caption">A small moment of learning, right on your phone.</p>
+          <div class="message-bubble" aria-live="polite" aria-atomic="true">
+            <p class="message-sender">Smartifier</p>
+            <p>{{ selectedStack().message }}</p>
+          </div>
+          <p class="demo-hint">Example message only. Choose a stack below to change the preview.</p>
+        </div>
+      </section>
+      <div class="floating-bottom">
+        <span class="sparkle" aria-hidden="true">✧</span>
+        <div>Your interests.<br /><strong>A little more knowledge.</strong></div>
+      </div>
+    </div>
+  </section>
+  <section class="features wrap" id="stacks" aria-labelledby="stacks-title">
+    <div class="section-heading">
+      <p class="eyebrow">FOLLOW YOUR CURIOSITY</p>
+      <h2 id="stacks-title">A knowledge stack is a subject you subscribe to.</h2>
+      <p>
+        Members receive text messages from their chosen stack. Explore these illustrative examples.
+      </p>
+    </div>
+    <div class="feature-grid">
+      @for (stack of stacks; track stack.name) {
+      <article>
+        <span class="feature-icon" aria-hidden="true">✧</span>
+        <h3>{{ stack.name }}</h3>
+        <p>{{ stack.message }}</p>
+        <button
+          class="stack-preview"
+          type="button"
+          [attr.aria-pressed]="selectedStack() === stack"
+          (click)="selectedStack.set(stack)"
+        >
+          {{ selectedStack() === stack ? 'Showing in preview' : 'Preview a text message' }}
+        </button>
+      </article>
+      }
+    </div>
+  </section>
+  <section class="how wrap" id="how-it-works" aria-labelledby="how-title">
+    <div>
+      <p class="eyebrow">FROM MEMBERSHIP TO YOUR MESSAGES</p>
+      <h2 id="how-title">Choose a subject.<br />Let the knowledge come to you.</h2>
+      <a class="text-link" href="#membership"
+        >Explore membership options <span aria-hidden="true">↗</span></a
+      >
+    </div>
+    <ol>
+      <li>
+        <span>01</span>
+        <div>
+          <h3>Become a member</h3>
+          <p>Membership gives you access to knowledge-stack subscriptions.</p>
+        </div>
+      </li>
+      <li>
+        <span>02</span>
+        <div>
+          <h3>Subscribe to a knowledge stack</h3>
+          <p>Choose a subject you want to learn about.</p>
+        </div>
+      </li>
+      <li>
+        <span>03</span>
+        <div>
+          <h3>Receive knowledge by text</h3>
+          <p>
+            Get messages from your subscribed stack, within your membership's message allowance.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+  <section class="features membership wrap" id="membership" aria-labelledby="membership-title">
+    <div class="section-heading">
+      <p class="eyebrow">YOUR MEMBERSHIP, YOUR LEARNING</p>
+      <h2 id="membership-title">Make more room for learning with Premium.</h2>
+      <p>Both memberships bring knowledge-stack messages to your phone.</p>
+    </div>
+    <div class="membership-grid">
+      <article class="membership-card">
+        <p class="eyebrow">MEMBER</p>
+        <h3>Knowledge by text</h3>
+        <ul>
+          <li>Subscribe to a knowledge stack</li>
+          <li>Receive text messages from that stack</li>
+          <li>A limited text-message allowance</li>
+        </ul>
+      </article>
+      <article class="membership-card premium">
+        <p class="eyebrow">PREMIUM MEMBER</p>
+        <h3>More ways to make it yours</h3>
+        <ul>
+          <li>Knowledge-stack subscriptions</li>
+          <li>A higher text-message allowance</li>
+          <li>More customization options</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+<footer class="wrap">
+  <a class="brand" href="#home">Smartifier<span class="brand-dot">.</span></a>
+  <p>Knowledge stacks. Delivered by text. Built by Byte Solutions.</p>
+  <span>© {{ year }} Smartifier</span>
+</footer>
