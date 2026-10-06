@@ -3,6 +3,7 @@ package com.bytesolutions.smartifier.controllers;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import com.bytesolutions.smartifier.models.Account;
 import com.bytesolutions.smartifier.services.AccountService;
 import jakarta.validation.Valid;
@@ -28,12 +29,15 @@ public class AuthController {
 
     public record Registration(@NotBlank @Size(max = 100) String name,
                                @NotBlank @Email @Size(max = 254) String email,
+                               @NotBlank @Size(max = 40) String phoneNumber,
                                @NotBlank @Size(min = 12, max = 64) String password,
                                @NotBlank String passwordConfirmation) {}
 
-    public record Profile(String id, String name, String email, Account.Role role, Instant createdAt) {
+    public record Profile(String id, String name, String email, Account.Role role, Instant createdAt,
+                          String phoneNumber, Set<String> subscriptions) {
         public static Profile from(Account account) {
-            return new Profile(account.id(), account.name(), account.email(), account.role(), account.createdAt());
+            return new Profile(account.id(), account.name(), account.email(), account.role(), account.createdAt(),
+                    account.phoneNumber(), account.subscriptions());
         }
     }
 
@@ -48,7 +52,7 @@ public class AuthController {
         if (!request.password().equals(request.passwordConfirmation())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match.");
         }
-        return Profile.from(accounts.register(request.name(), request.email(), request.password()));
+        return Profile.from(accounts.register(request.name(), request.email(), request.password(), request.phoneNumber()));
     }
 
     @GetMapping("/me")

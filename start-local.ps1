@@ -23,7 +23,7 @@ try {
         throw 'Java JDK 25 is required. Supply -JavaHome with its installation path.'
     }
     $compilerVersion = & (Join-Path $JavaHome 'bin/javac.exe') -version 2>&1
-    if ("$compilerVersion" -notmatch '^javac 25\.') { throw 'This project requires Java JDK 25.' }
+    if ("$compilerVersion" -notmatch '^javac 25(?:\.|\s|$)') { throw 'This project requires Java JDK 25.' }
     $env:JAVA_HOME = $JavaHome
     if ($SetupAdmin) {
         $env:SMARTIFIER_ADMIN_EMAIL = (Read-Host 'Initial admin email').Trim()

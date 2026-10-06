@@ -8,6 +8,8 @@ export interface Profile {
   email: string;
   role: 'MEMBER' | 'ADMIN';
   createdAt: string;
+  phoneNumber: string | null;
+  subscriptions: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,14 +36,42 @@ export class AuthService {
     return { [csrf.headerName]: csrf.token };
   }
 
-  async register(name: string, email: string, password: string, passwordConfirmation: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+    phoneNumber: string
+  ) {
     await firstValueFrom(
       this.http.post(
         '/api/auth/register',
-        { name, email, password, passwordConfirmation },
+        { name, email, password, passwordConfirmation, phoneNumber },
         { headers: await this.headers() }
       )
     );
+  }
+
+  async subscribe(stack: string, subscribed: boolean) {
+    const user = await firstValueFrom(
+      this.http.post<Profile>(
+        '/api/member/subscriptions',
+        { stack, subscribed },
+        { headers: await this.headers() }
+      )
+    );
+    this.user.set(user);
+  }
+
+  async updatePhone(phoneNumber: string) {
+    const user = await firstValueFrom(
+      this.http.post<Profile>(
+        '/api/member/phone',
+        { phoneNumber },
+        { headers: await this.headers() }
+      )
+    );
+    this.user.set(user);
   }
 
   async login(email: string, password: string): Promise<Profile> {

@@ -42,6 +42,25 @@
         maxlength="254"
         [(ngModel)]="email"
       />
+      @if (registering) {
+      <label for="phone">Mobile number</label>
+      <input
+        id="phone"
+        name="phoneNumber"
+        type="tel"
+        autocomplete="tel"
+        required
+        maxlength="40"
+        pattern="[+][1-9][0-9]{7,14}"
+        placeholder="+14165551234"
+        [(ngModel)]="phoneNumber"
+        aria-describedby="phone-hint"
+      />
+      <p id="phone-hint" class="field-hint">
+        Include your country code, using digits only after +. Your stack information will be sent by
+        text, rather than shown in your account.
+      </p>
+      }
       <label for="password">Password</label>
       <input
         id="password"

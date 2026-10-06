@@ -78,7 +78,7 @@ class AuthenticationIntegrationTest {
 
     private String registration(String email, String confirmation) {
         return new Document("name", "Test Member").append("email", email).append("password", PASSWORD)
-                .append("passwordConfirmation", confirmation).append("role", "ADMIN").toJson();
+                .append("phoneNumber", "+14165551234").append("passwordConfirmation", confirmation).append("role", "ADMIN").toJson();
     }
 
     @Test
@@ -108,6 +108,24 @@ class AuthenticationIntegrationTest {
         var profile = get(member, "/api/auth/me");
         assertEquals(200, profile.statusCode());
         assertEquals("member@example.test", Document.parse(profile.body()).getString("email"));
+        assertEquals("+14165551234", Document.parse(profile.body()).getString("phoneNumber"));
+        assertEquals(403, post(member, "/api/member/subscriptions",
+                "{\"stack\":\"everyday-science\",\"subscribed\":true}", "application/json", false).statusCode());
+        assertEquals(400, post(member, "/api/member/subscriptions",
+                "{\"stack\":\"unknown\",\"subscribed\":true}", "application/json", true).statusCode());
+        var subscribed = post(member, "/api/member/subscriptions",
+                "{\"stack\":\"everyday-science\",\"subscribed\":true}", "application/json", true);
+        assertEquals(200, subscribed.statusCode(), subscribed.body());
+        assertTrue(Document.parse(get(member, "/api/auth/me").body()).getList("subscriptions", String.class)
+                .contains("everyday-science"));
+        var unsubscribed = post(member, "/api/member/subscriptions",
+                "{\"stack\":\"everyday-science\",\"subscribed\":false}", "application/json", true);
+        assertEquals(200, unsubscribed.statusCode(), unsubscribed.body());
+        assertTrue(Document.parse(unsubscribed.body()).getList("subscriptions", String.class).isEmpty());
+        var updatedPhone = post(member, "/api/member/phone", "{\"phoneNumber\":\"+1 (647) 555-1234\"}",
+                "application/json", true);
+        assertEquals(200, updatedPhone.statusCode(), updatedPhone.body());
+        assertEquals("+16475551234", Document.parse(updatedPhone.body()).getString("phoneNumber"));
         assertFalse(profile.body().contains("password"));
         assertEquals(200, get(member, "/member/dashboard").statusCode());
         assertEquals(200, get(member, "/member/dashboard").statusCode()); // Direct refresh preserves session.

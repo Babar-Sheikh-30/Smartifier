@@ -18,6 +18,7 @@ export class AuthPageComponent {
   readonly error = signal('');
   name = '';
   email = '';
+  phoneNumber = '';
   password = '';
   passwordConfirmation = '';
 
@@ -35,7 +36,13 @@ export class AuthPageComponent {
     this.busy.set(true);
     try {
       if (this.registering) {
-        await this.auth.register(this.name, this.email, this.password, this.passwordConfirmation);
+        await this.auth.register(
+          this.name,
+          this.email,
+          this.password,
+          this.passwordConfirmation,
+          this.phoneNumber
+        );
         this.password = '';
         this.passwordConfirmation = '';
         await this.router.navigate(['/login'], { queryParams: { registered: '1' } });

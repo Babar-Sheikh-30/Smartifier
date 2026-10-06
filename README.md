@@ -2,7 +2,7 @@
 
 Smartifier delivers bite-sized knowledge by text message. The current application is a responsive landing page with membership information, example knowledge stacks, and an interactive text-message preview.
 
-Members can register and log in, and members/admins have separate protected dashboard placeholders. Accounts are stored in local MongoDB. Subscriptions and SMS delivery are not implemented yet.
+Members can register and log in, and members/admins have separate protected dashboards. Accounts and stack subscriptions are stored in local MongoDB. Members can subscribe to Everyday science, Words and language, and Learning habits; stack content is not displayed on the member page. Premium payments and SMS delivery are not implemented yet; the premium button currently displays an availability notice.
 
 ## Requirements
 
@@ -58,7 +58,7 @@ Keep Spring Boot running on port 8080, then open http://localhost:4200. Angular 
 
 The default MongoDB connection is `mongodb://localhost:27017/smartifier`. Accounts live in the `users` collection. Override the connection with `MONGODB_URI` if needed. Compass can connect to `mongodb://localhost:27017` to inspect the data.
 
-Open `/register` to create a member with name, email, password, and confirmation. Registration redirects to `/login`. Members and admins share the same login page and are directed to `/member/dashboard` and `/admin/dashboard`, respectively. Each dashboard displays the account information and a logout button.
+Open `/register` to create a member with name, email, mobile number including country code (such as `+14165551234`), password, and confirmation. Registration redirects to `/login`. Members and admins share the same login page and are directed to `/member/dashboard` and `/admin/dashboard`, respectively. Each dashboard displays the account information and a logout button. Members can update their mobile number and subscribe or unsubscribe from the three free stacks. Existing accounts without a mobile number must add one before subscribing.
 
 The backend stores BCrypt password hashes and creates a unique index on normalized emails. Registration always assigns `MEMBER`, even if a client supplies an admin role. Resolve any pre-existing duplicate emails before startup so the index can be created.
 
