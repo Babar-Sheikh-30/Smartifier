@@ -1,0 +1,106 @@
+<header class="navigation wrap">
+  <a class="brand" routerLink="/">Smartifier<span class="brand-dot">.</span></a>
+  <button class="button button-small button-outline" (click)="logout()" [disabled]="busy()">
+    {{ busy() ? 'Logging out…' : 'Log out' }}
+  </button>
+</header>
+<main class="account-page wrap">
+  @if (auth.user(); as user) {
+  <section class="account-card dashboard-card">
+    <p class="eyebrow">{{ user.role === 'ADMIN' ? 'ADMIN DASHBOARD' : 'MEMBER DASHBOARD' }}</p>
+    <h1>Welcome, {{ user.name }}.</h1>
+    <p class="account-intro">
+      {{ user.role === 'ADMIN' ? 'Your administration dashboard is ready.' : 'Welcome to your
+      Smartifier account.' }}
+    </p>
+    <dl class="profile-details">
+      <dt>Email</dt>
+      <dd>{{ user.email }}</dd>
+      @if (user.role === 'MEMBER') {
+      <dt>Mobile number</dt>
+      <dd>{{ user.phoneNumber || 'No mobile number on file' }}</dd>
+      }
+      <dt>Account type</dt>
+      <dd>{{ user.role === 'ADMIN' ? 'Administrator' : 'Member' }}</dd>
+    </dl>
+    @if (user.role === 'MEMBER') {
+    <form #phoneForm="ngForm" (ngSubmit)="savePhone()">
+      <label for="member-phone">Update your mobile number</label>
+      <input
+        id="member-phone"
+        name="phoneNumber"
+        type="tel"
+        autocomplete="tel"
+        required
+        maxlength="40"
+        pattern="[+][1-9][0-9]{7,14}"
+        placeholder="+14165551234"
+        [(ngModel)]="phoneNumber"
+        aria-describedby="member-phone-hint"
+      />
+      <p id="member-phone-hint" class="field-hint">
+        Include your country code, using digits only after + (for example, +14165551234).
+      </p>
+      <button
+        class="button button-small"
+        type="submit"
+        [disabled]="phoneForm.invalid || saving() || busy()"
+      >
+        {{ saving() === 'phone' ? 'Saving...' : 'Save number' }}
+      </button>
+    </form>
+    <section class="premium-banner" aria-labelledby="premium-title">
+      <div>
+        <p class="eyebrow">GO PREMIUM</p>
+        <h2 id="premium-title">Keep your curiosity growing.</h2>
+        <p>Upgrade your membership when premium becomes available.</p>
+      </div>
+      <button class="button" (click)="premiumNotice.set(true)">Pay for premium</button>
+    </section>
+    @if (premiumNotice()) {
+    <p class="form-success" role="status">
+      Premium payments are coming soon. No payment has been taken.
+    </p>
+    }
+    <section aria-labelledby="stacks-title" class="member-stacks">
+      <p class="eyebrow">YOUR FREE STACKS</p>
+      <h2 id="stacks-title">Choose what sparks your curiosity.</h2>
+      <p class="account-intro">
+        Subscribe to any of these three stacks. The knowledge will arrive by text; your account only
+        manages your subscriptions.
+      </p>
+      <p class="field-hint">You can save your subscriptions now. Text delivery is coming soon.</p>
+      @if (!user.phoneNumber) {
+      <p class="form-error">Add your mobile number above before subscribing.</p>
+      }
+      <div class="stack-options">
+        @for (stack of stacks; track stack.id) {
+        <article class="stack-option">
+          <h3>{{ stack.name }}</h3>
+          <p class="field-hint">
+            {{ subscribed(stack.id) ? 'Subscribed' : 'Available with your free membership' }}
+          </p>
+          <button
+            class="button button-small"
+            [disabled]="
+                    saving() || busy() || (!user.phoneNumber && !subscribed(stack.id))
+                  "
+            [attr.aria-pressed]="subscribed(stack.id)"
+            (click)="toggleStack(stack.id)"
+          >
+            {{ saving() === stack.id ? 'Saving...' : subscribed(stack.id) ? 'Unsubscribe' :
+            'Subscribe' }}
+          </button>
+        </article>
+        }
+      </div>
+      @if (notice()) {
+      <p class="form-success" role="status">{{ notice() }}</p>
+      }
+    </section>
+    } @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+    }
+  </section>
+  }
+</main>

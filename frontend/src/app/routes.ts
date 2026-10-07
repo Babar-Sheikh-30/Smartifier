@@ -2,9 +2,9 @@ import { inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 import { AuthService } from './auth.service';
-import { LandingComponent } from './landing';
-import { AuthPageComponent } from './auth-page';
-import { DashboardComponent } from './dashboard';
+import { LandingComponent } from './landing/landing';
+import { AuthPageComponent } from './auth-page/auth-page';
+import { DashboardComponent } from './dashboard/dashboard';
 
 const signedIn: CanActivateFn = async (route) => {
   const auth = inject(AuthService);

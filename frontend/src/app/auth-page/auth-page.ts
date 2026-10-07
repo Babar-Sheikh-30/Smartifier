@@ -2,13 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AuthService } from './auth.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'bs-auth-page',
   standalone: true,
   imports: [FormsModule, RouterLink],
-  templateUrl: './auth-page.html'
+  templateUrl: './auth-page.html',
+  styleUrl: './auth-page.scss'
 })
 export class AuthPageComponent {
   private readonly auth = inject(AuthService);

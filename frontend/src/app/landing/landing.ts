@@ -3,7 +3,8 @@ import { Component, signal } from '@angular/core';
 @Component({
   selector: 'bs-landing',
   standalone: true,
-  templateUrl: './landing.html'
+  templateUrl: './landing.html',
+  styleUrl: './landing.scss'
 })
 export class LandingComponent {
   readonly stacks = [

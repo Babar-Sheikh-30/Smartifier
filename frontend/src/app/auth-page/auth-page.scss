@@ -1,0 +1,7 @@
+@use '../shared/account';
+
+.account-switch .text-link {
+  font-size: inherit;
+  color: var(--green);
+  text-decoration: underline;
+}

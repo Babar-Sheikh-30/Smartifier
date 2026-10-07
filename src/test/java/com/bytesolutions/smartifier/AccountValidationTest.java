@@ -59,7 +59,7 @@ public class AccountValidationTest {
 
         // Act
         ResponseStatusException error = assertThrows(ResponseStatusException.class,
-                () -> service.register(name, email, password));
+                () -> service.register(name, email, password, "+14165551234"));
 
         // Assert
         assertEquals(400, error.getStatusCode().value());
