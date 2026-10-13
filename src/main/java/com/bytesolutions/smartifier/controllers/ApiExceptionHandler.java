@@ -20,6 +20,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     ResponseEntity<Map<String, String>> validation(Exception exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message",
-                "Enter a name, a valid email, and a password of 12–64 characters."));
+                "Check the required fields. Passwords must use 12–64 characters with uppercase, lowercase, a number, and a special character."));
     }
 }

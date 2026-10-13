@@ -1,6 +1,5 @@
 package com.bytesolutions.smartifier.bootstrap;
 
-import java.time.Instant;
 import com.bytesolutions.smartifier.models.Account;
 import com.bytesolutions.smartifier.models.Account.Role;
 import com.bytesolutions.smartifier.repositories.AccountRepository;
@@ -56,8 +55,9 @@ public class AccountBootstrap implements ApplicationRunner {
             return;
         }
         AccountService.validatePassword(password);
+        // Admins do not receive stack messages, so the constructor leaves phoneNumber null.
         accounts.insert(new Account(null, "Administrator", normalized,
-                passwords.encode(password), Role.ADMIN, Instant.now()));
+                passwords.encode(password), Role.ADMIN, null));
         log.info("Initial admin account created.");
     }
 }

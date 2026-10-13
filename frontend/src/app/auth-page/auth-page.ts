@@ -22,6 +22,8 @@ export class AuthPageComponent {
   phoneNumber = '';
   password = '';
   passwordConfirmation = '';
+  readonly passwordPattern =
+    /^(?=[\s\S]*[A-Z])(?=[\s\S]*[a-z])(?=[\s\S]*[0-9])(?=[\s\S]*[^A-Za-z0-9\s])[\s\S]+$/;
 
   get registering() {
     return this.route.snapshot.data['register'] === true;

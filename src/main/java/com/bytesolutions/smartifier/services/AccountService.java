@@ -1,7 +1,6 @@
 package com.bytesolutions.smartifier.services;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
 import com.bytesolutions.smartifier.models.Account;
@@ -35,10 +34,14 @@ public class AccountService implements UserDetailsService {
     }
 
     public static void validatePassword(String password) {
-        if (password.length() < 12 || password.length() > 64
-                || password.getBytes(StandardCharsets.UTF_8).length > 72 || password.isBlank()) {
+        if (password == null || password.length() < 12 || password.length() > 64
+                || password.getBytes(StandardCharsets.UTF_8).length > 72
+                || !password.matches("(?s).*[A-Z].*")
+                || !password.matches("(?s).*[a-z].*")
+                || !password.matches("(?s).*[0-9].*")
+                || !password.matches("(?s).*[^A-Za-z0-9\\s].*")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Use a password of 12–64 characters, up to 72 UTF-8 bytes.");
+                    "Use 12–64 characters with an uppercase letter, a lowercase letter, a number, and a special character (up to 72 UTF-8 bytes).");
         }
     }
 
@@ -56,11 +59,12 @@ public class AccountService implements UserDetailsService {
 
     public Account register(String name, String email, String password, String phoneNumber) {
         validatePassword(password);
+        // Regular members need a valid phone number for stack messages; admins are created separately.
         String phone = normalizePhone(phoneNumber);
         try {
             // The database's unique email index also prevents concurrent duplicate registrations.
             return accounts.insert(new Account(null, name.strip(), normalizeEmail(email),
-                    passwords.encode(password), Role.MEMBER, Instant.now(), phone, Set.of()));
+                    passwords.encode(password), Role.MEMBER, null, phone, Set.of()));
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "An account with this email already exists.");
@@ -72,6 +76,7 @@ public class AccountService implements UserDetailsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose one of the three available stacks.");
         }
         Account account = current(email);
+        // Legacy members may have a missing or blank phone number and must add one before subscribing.
         if (subscribed) normalizePhone(account.phoneNumber());
         // Update just this stack so simultaneous requests cannot overwrite other subscriptions.
         var query = org.springframework.data.mongodb.core.query.Query.query(

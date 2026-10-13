@@ -70,12 +70,14 @@
         required
         [minlength]="registering ? 12 : 1"
         [maxlength]="registering ? 64 : 256"
+        [pattern]="registering ? passwordPattern : ''"
         [(ngModel)]="password"
         [attr.aria-describedby]="registering ? 'password-hint' : null"
       />
       @if (registering) {
       <p id="password-hint" class="field-hint">
-        Use 12–64 characters. Longer passwords are stronger.
+        Use 12–64 characters with an uppercase letter, a lowercase letter, a number, and a special
+        character (such as ! or @).
       </p>
       <label for="confirm">Confirm password</label>
       <input

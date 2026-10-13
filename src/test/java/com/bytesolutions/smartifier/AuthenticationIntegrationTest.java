@@ -31,7 +31,7 @@ import static org.mockito.Mockito.mock;
 class AuthenticationIntegrationTest {
     private static final String DATABASE = "smartifier_auth_test_" + UUID.randomUUID().toString().replace("-", "");
     private static final String MONGO = "mongodb://localhost:27017/" + DATABASE;
-    private static final String PASSWORD = "integration-password-123";
+    private static final String PASSWORD = "Integration-password-123!";
     @Value("${local.server.port}") int port;
     @Autowired AccountBootstrap bootstrap;
 
@@ -100,6 +100,9 @@ class AuthenticationIntegrationTest {
                 "application/json", true);
         assertEquals(201, created.statusCode(), created.body());
         assertEquals("MEMBER", Document.parse(created.body()).getString("role"));
+        String createdAt = Document.parse(created.body()).getString("createdAt");
+        assertNotNull(createdAt);
+        assertDoesNotThrow(() -> java.time.Instant.parse(createdAt));
         assertFalse(created.body().contains("password"));
         assertEquals(409, post(member, "/api/auth/register", registration("member@example.test", PASSWORD),
                 "application/json", true).statusCode());
@@ -109,6 +112,8 @@ class AuthenticationIntegrationTest {
         assertEquals(200, profile.statusCode());
         assertEquals("member@example.test", Document.parse(profile.body()).getString("email"));
         assertEquals("+14165551234", Document.parse(profile.body()).getString("phoneNumber"));
+        assertEquals(java.time.Instant.parse(createdAt).toEpochMilli(),
+                java.time.Instant.parse(Document.parse(profile.body()).getString("createdAt")).toEpochMilli());
         assertEquals(403, post(member, "/api/member/subscriptions",
                 "{\"stack\":\"everyday-science\",\"subscribed\":true}", "application/json", false).statusCode());
         assertEquals(400, post(member, "/api/member/subscriptions",
@@ -122,10 +127,27 @@ class AuthenticationIntegrationTest {
                 "{\"stack\":\"everyday-science\",\"subscribed\":false}", "application/json", true);
         assertEquals(200, unsubscribed.statusCode(), unsubscribed.body());
         assertTrue(Document.parse(unsubscribed.body()).getList("subscriptions", String.class).isEmpty());
+        for (String stack : new String[] {"everyday-science", "words-and-language", "learning-habits"}) {
+            String subscription = new Document("stack", stack).append("subscribed", true).toJson();
+            assertEquals(200, post(member, "/api/member/subscriptions", subscription, "application/json", true).statusCode());
+            assertEquals(200, post(member, "/api/member/subscriptions", subscription, "application/json", true).statusCode());
+        }
+        assertEquals(3, Document.parse(get(member, "/api/auth/me").body()).getList("subscriptions", String.class).size());
+        for (String stack : new String[] {"everyday-science", "words-and-language", "learning-habits"}) {
+            String subscription = new Document("stack", stack).append("subscribed", false).toJson();
+            assertEquals(200, post(member, "/api/member/subscriptions", subscription, "application/json", true).statusCode());
+            assertEquals(200, post(member, "/api/member/subscriptions", subscription, "application/json", true).statusCode());
+        }
+        assertTrue(Document.parse(get(member, "/api/auth/me").body()).getList("subscriptions", String.class).isEmpty());
+        assertEquals(400, post(member, "/api/member/phone", "{\"phoneNumber\":\"4165551234\"}",
+                "application/json", true).statusCode());
+        assertEquals("+14165551234", Document.parse(get(member, "/api/auth/me").body()).getString("phoneNumber"));
         var updatedPhone = post(member, "/api/member/phone", "{\"phoneNumber\":\"+1 (647) 555-1234\"}",
                 "application/json", true);
         assertEquals(200, updatedPhone.statusCode(), updatedPhone.body());
         assertEquals("+16475551234", Document.parse(updatedPhone.body()).getString("phoneNumber"));
+        assertEquals(java.time.Instant.parse(createdAt).toEpochMilli(),
+                java.time.Instant.parse(Document.parse(updatedPhone.body()).getString("createdAt")).toEpochMilli());
         assertFalse(profile.body().contains("password"));
         assertEquals(200, get(member, "/member/dashboard").statusCode());
         assertEquals(200, get(member, "/member/dashboard").statusCode()); // Direct refresh preserves session.
@@ -152,6 +174,7 @@ class AuthenticationIntegrationTest {
             assertNotEquals(PASSWORD, saved.getString("passwordHash"));
             assertTrue(saved.getString("passwordHash").startsWith("{bcrypt}"));
             assertFalse(saved.containsKey("passwordConfirmation"));
+            assertEquals(java.time.Instant.parse(createdAt).toEpochMilli(), saved.getDate("createdAt").getTime());
         }
     }
 }

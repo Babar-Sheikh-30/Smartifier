@@ -36,8 +36,12 @@ try {
         $confirmText = [System.Net.NetworkCredential]::new('', $confirmation).Password
         if ($env:SMARTIFIER_ADMIN_PASSWORD -cne $confirmText) { throw 'Passwords do not match.' }
         if ($env:SMARTIFIER_ADMIN_PASSWORD.Length -lt 12 -or $env:SMARTIFIER_ADMIN_PASSWORD.Length -gt 64 -or
-            [System.Text.Encoding]::UTF8.GetByteCount($env:SMARTIFIER_ADMIN_PASSWORD) -gt 72) {
-            throw 'Use 12-64 characters and no more than 72 UTF-8 bytes.'
+            [System.Text.Encoding]::UTF8.GetByteCount($env:SMARTIFIER_ADMIN_PASSWORD) -gt 72 -or
+            $env:SMARTIFIER_ADMIN_PASSWORD -cnotmatch '[A-Z]' -or
+            $env:SMARTIFIER_ADMIN_PASSWORD -cnotmatch '[a-z]' -or
+            $env:SMARTIFIER_ADMIN_PASSWORD -notmatch '[0-9]' -or
+            $env:SMARTIFIER_ADMIN_PASSWORD -notmatch '[^A-Za-z0-9\s]') {
+            throw 'Use 12-64 characters with uppercase, lowercase, a number, and a special character; no more than 72 UTF-8 bytes.'
         }
         $confirmText = $null
         $securePassword.Dispose()

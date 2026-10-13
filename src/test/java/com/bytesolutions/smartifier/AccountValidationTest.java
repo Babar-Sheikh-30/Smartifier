@@ -32,13 +32,42 @@ public class AccountValidationTest {
     private AccountService service;
 
     @Test
+    void phoneDigitAndInputLengthBoundaries() {
+        for (int digits : new int[] {7, 8, 9, 14, 15, 16}) {
+            String phone = "+1" + "2".repeat(digits - 1);
+            if (digits >= 8 && digits <= 15) {
+                assertEquals(phone, AccountService.normalizePhone(phone));
+            } else {
+                assertThrows(ResponseStatusException.class, () -> AccountService.normalizePhone(phone));
+            }
+        }
+        String phone = "+14165551234";
+        assertEquals(phone, AccountService.normalizePhone(phone + " ".repeat(40 - phone.length())));
+        assertThrows(ResponseStatusException.class,
+                () -> AccountService.normalizePhone(phone + " ".repeat(41 - phone.length())));
+        for (String invalid : new String[] {null, "", "   ", "14165551234", "+04165551234", "+14165551234x", "+1\n4165551234"}) {
+            assertThrows(ResponseStatusException.class, () -> AccountService.normalizePhone(invalid));
+        }
+    }
+
+    @Test
+    void passwordUtf8LimitAccepts71And72BytesAndRejects73Bytes() {
+        for (int bytes : new int[] {71, 72, 73}) {
+            String password = "Aa1!" + "\u00e9".repeat(33) + "a".repeat(bytes - 70);
+            if (bytes <= 72) assertDoesNotThrow(() -> AccountService.validatePassword(password));
+            else assertThrows(ResponseStatusException.class, () -> AccountService.validatePassword(password));
+        }
+        assertThrows(ResponseStatusException.class, () -> AccountService.validatePassword("Aa1!aaaaaaa"));
+    }
+
+    @Test
     void testPasswordValidation_WhenAtOrBeyondLimits_AcceptsOrRejects() {
         // Arrange
-        String minimumPassword = "a".repeat(12);
-        String maximumPassword = "a".repeat(64);
-        String maximumUtf8Password = "\u00e9".repeat(36);
-        String oversizedPassword = "a".repeat(65);
-        String oversizedUtf8Password = "\u00e9".repeat(37);
+        String minimumPassword = "Aa1!" + "a".repeat(8);
+        String maximumPassword = "Aa1!" + "a".repeat(60);
+        String maximumUtf8Password = "Aa1!" + "\u00e9".repeat(34);
+        String oversizedPassword = "Aa1!" + "a".repeat(61);
+        String oversizedUtf8Password = "Aa1!" + "\u00e9".repeat(35);
 
         // Act / Assert
         assertDoesNotThrow(() -> AccountService.validatePassword(minimumPassword));
@@ -48,6 +77,18 @@ public class AccountValidationTest {
                 () -> AccountService.validatePassword(oversizedPassword));
         assertThrows(ResponseStatusException.class,
                 () -> AccountService.validatePassword(oversizedUtf8Password));
+    }
+
+    @Test
+    void passwordRequiresEveryCharacterType() {
+        for (String invalid : new String[] {
+                "lowercase123!", "UPPERCASE123!", "NoNumbersHere!",
+                "NoSymbols1234", "SpacesOnly123 " }) {
+            assertThrows(ResponseStatusException.class,
+                    () -> AccountService.validatePassword(invalid), invalid);
+        }
+        assertThrows(ResponseStatusException.class, () -> AccountService.validatePassword(null));
+        assertDoesNotThrow(() -> AccountService.validatePassword("ValidPassword123!"));
     }
 
     @Test

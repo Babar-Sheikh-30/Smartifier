@@ -46,10 +46,55 @@ public class AdminSetupTest {
     }
 
     @Test
+    void newAdminNormalizesEmailHashesPasswordAndDefersCreationDateToAuditing() {
+        when(accounts.findByEmail("admin@example.com")).thenReturn(Optional.empty());
+        when(passwords.encode("Aa1!aaaaaaaa")).thenReturn("encoded-hash");
+        new AccountBootstrap(mongo, accounts, passwords, " ADMIN@Example.com ", "Aa1!aaaaaaaa").run(arguments);
+        var captured = org.mockito.ArgumentCaptor.forClass(Account.class);
+        verify(accounts).insert(captured.capture());
+        assertEquals(Role.ADMIN, captured.getValue().role());
+        assertEquals("admin@example.com", captured.getValue().email());
+        assertEquals("encoded-hash", captured.getValue().passwordHash());
+        org.junit.jupiter.api.Assertions.assertNull(captured.getValue().createdAt());
+    }
+
+    @Test
+    void existingAdminNeverResetsPasswordEvenWhenConfiguredPasswordIsInvalid() {
+        when(accounts.findByEmail("admin@example.com")).thenReturn(Optional.of(
+                new Account("1", "Admin", "admin@example.com", "original", Role.ADMIN, Instant.EPOCH)));
+        new AccountBootstrap(mongo, accounts, passwords, "admin@example.com", "short").run(arguments);
+        verify(accounts).findByEmail("admin@example.com");
+        verifyNoMoreInteractions(accounts);
+        verifyNoInteractions(passwords);
+    }
+
+    @Test
+    void newAdminRejectsInvalidPasswordWithoutWritingAccount() {
+        when(accounts.findByEmail("admin@example.com")).thenReturn(Optional.empty());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> new AccountBootstrap(mongo, accounts, passwords, "admin@example.com", "short").run(arguments));
+        verify(accounts).findByEmail("admin@example.com");
+        verifyNoMoreInteractions(accounts);
+        verifyNoInteractions(passwords);
+    }
+
+    @Test
+    void adminEmailAccepts254CharactersAndRejects255() {
+        String email = "a".repeat(242) + "@example.com";
+        when(accounts.findByEmail(email)).thenReturn(Optional.of(
+                new Account("1", "Admin", email, "original", Role.ADMIN, Instant.EPOCH)));
+        new AccountBootstrap(mongo, accounts, passwords, email, "").run(arguments);
+        clearInvocations(accounts);
+        assertThrows(IllegalStateException.class,
+                () -> new AccountBootstrap(mongo, accounts, passwords, "a" + email, "").run(arguments));
+        verifyNoInteractions(accounts, passwords);
+    }
+
+    @Test
     void testAdminSetup_WhenEmailIsBlank_SkipsAccountCreation() {
         // Arrange
         AccountBootstrap bootstrap = new AccountBootstrap(mongo, accounts, passwords,
-                "   ", "valid-password-123");
+                "   ", "Valid-password-123!");
 
         // Act
         bootstrap.run(arguments);
@@ -63,7 +108,7 @@ public class AdminSetupTest {
     void testAdminSetup_WhenEmailIsInvalid_RejectsSetup() {
         // Arrange
         AccountBootstrap bootstrap = new AccountBootstrap(mongo, accounts, passwords,
-                "invalid-email", "valid-password-123");
+                "invalid-email", "Valid-password-123!");
 
         // Act
         IllegalStateException error = assertThrows(IllegalStateException.class,
@@ -81,7 +126,7 @@ public class AdminSetupTest {
                 "original-password-hash", Role.MEMBER, Instant.parse("2026-01-01T00:00:00Z"));
         when(accounts.findByEmail("member@example.com")).thenReturn(Optional.of(member));
         AccountBootstrap bootstrap = new AccountBootstrap(mongo, accounts, passwords,
-                " MEMBER@Example.com ", "valid-password-123");
+                " MEMBER@Example.com ", "Valid-password-123!");
 
         // Act
         IllegalStateException error = assertThrows(IllegalStateException.class,

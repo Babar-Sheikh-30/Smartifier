@@ -37,11 +37,34 @@ public class RegistrationValidationTest {
     }
 
     @Test
+    void matchingConfirmationCreatesMemberAndMismatchingConfirmationNeverCallsService() throws Exception {
+        String password = "Valid-password-123!";
+        when(accounts.register("Member", "member@example.com", password, "+14165551234"))
+                .thenReturn(new com.bytesolutions.smartifier.models.Account("1", "Member", "member@example.com",
+                        "hash", com.bytesolutions.smartifier.models.Account.Role.MEMBER, java.time.Instant.EPOCH,
+                        "+14165551234", java.util.Set.of()));
+        String body = """
+                {"name":"Member","email":"member@example.com","phoneNumber":"+14165551234",
+                 "password":"Valid-password-123!","passwordConfirmation":"Valid-password-123!","role":"ADMIN"}
+                """;
+        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.role").value("MEMBER"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.passwordConfirmation").doesNotExist());
+        clearInvocations(accounts);
+        String mismatch = body.replace("\"passwordConfirmation\":\"Valid-password-123!\"",
+                "\"passwordConfirmation\":\"Valid-password-123?\"");
+        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(mismatch))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("Passwords do not match."));
+        verifyNoInteractions(accounts);
+    }
+
+    @Test
     void testRegistration_WhenNameIsMissing_RejectsRequest() throws Exception {
         // Arrange
         String requestBody = """
-                {"email":"member@example.com","password":"valid-password-123",
-                 "passwordConfirmation":"valid-password-123"}
+                {"email":"member@example.com","phoneNumber":"+14165551234","password":"Valid-password-123!",
+                 "passwordConfirmation":"Valid-password-123!"}
                 """;
 
         // Act
@@ -60,8 +83,8 @@ public class RegistrationValidationTest {
     void testRegistration_WhenNameIsBlank_RejectsRequest() throws Exception {
         // Arrange
         String requestBody = """
-                {"name":"   ","email":"member@example.com","password":"valid-password-123",
-                 "passwordConfirmation":"valid-password-123"}
+                {"name":"   ","email":"member@example.com","phoneNumber":"+14165551234","password":"Valid-password-123!",
+                 "passwordConfirmation":"Valid-password-123!"}
                 """;
 
         // Act
@@ -80,7 +103,7 @@ public class RegistrationValidationTest {
     void testRegistration_WhenConfirmationIsMissing_RejectsRequest() throws Exception {
         // Arrange
         String requestBody = """
-                {"name":"Member","email":"member@example.com","password":"valid-password-123"}
+                {"name":"Member","email":"member@example.com","phoneNumber":"+14165551234","password":"Valid-password-123!"}
                 """;
 
         // Act

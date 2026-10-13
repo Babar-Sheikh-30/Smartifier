@@ -62,7 +62,7 @@ Open `/register` to create a member with name, email, mobile number including co
 
 The backend stores BCrypt password hashes and creates a unique index on normalized emails. Registration always assigns `MEMBER`, even if a client supplies an admin role. Resolve any pre-existing duplicate emails before startup so the index can be created.
 
-Passwords must contain 12–64 characters and at most 72 UTF-8 bytes. Password confirmation is validated and never stored. Authentication uses HTTP-only session cookies, CSRF tokens, and backend role enforcement. Sessions expire after 30 minutes of inactivity and are lost when the backend restarts; accounts persist on disk. Set `SESSION_COOKIE_SECURE=true` when deploying behind HTTPS.
+New passwords must contain 12–64 characters, including an uppercase letter, a lowercase letter, a number, and a special character, and at most 72 UTF-8 bytes. Existing passwords continue to work at login. Password confirmation is validated and never stored. Authentication uses HTTP-only session cookies, CSRF tokens, and backend role enforcement. Sessions expire after 30 minutes of inactivity and are lost when the backend restarts; accounts persist on disk. Set `SESSION_COOKIE_SECURE=true` when deploying behind HTTPS.
 
 ## Build and check
 
