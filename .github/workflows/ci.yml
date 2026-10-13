@@ -14,6 +14,17 @@ jobs:
     name: Backend - Maven Test
     runs-on: ubuntu-latest
 
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +49,7 @@ jobs:
         run: chmod +x mvnw
 
       - name: Run backend tests
-        run: ./mvnw -B test
+        run: ./mvnw -B -Dsmartifier.mongo.tests=true test
 
   frontend:
     name: Frontend - Install Dependencies
