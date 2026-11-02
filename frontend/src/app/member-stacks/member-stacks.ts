@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DOCUMENT, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import {
@@ -21,6 +21,7 @@ import {
 export class MemberStacksComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly api = inject(StackService);
+  private readonly document = inject(DOCUMENT);
   readonly defaults = signal<DefaultStack[]>([]);
   readonly personal = signal<PersonalStack[]>([]);
   readonly loading = signal(true);
@@ -29,6 +30,7 @@ export class MemberStacksComponent implements OnInit {
   readonly notice = signal('');
   readonly editorOpen = signal(false);
   readonly editing = signal<PersonalStack | null>(null);
+  readonly savedStackId = signal<string | null>(null);
   readonly types = ['FACT', 'QUOTE', 'JOKE', 'VOCABULARY'] as const;
   name = '';
   description = '';
@@ -115,6 +117,16 @@ export class MemberStacksComponent implements OnInit {
     this.items = content ? content.items.map((item) => ({ ...item })) : [this.emptyItem()];
     this.editorOpen.set(true);
     this.error.set('');
+    this.notice.set('');
+    this.focusElement('stack-name');
+  }
+
+  private focusElement(id: string) {
+    this.document.defaultView?.requestAnimationFrame(() => {
+      const element = this.document.getElementById(id);
+      element?.focus({ preventScroll: true });
+      element?.scrollIntoView({ block: 'center' });
+    });
   }
 
   emptyItem(): ContentItem {
@@ -130,7 +142,10 @@ export class MemberStacksComponent implements OnInit {
   }
 
   cancel() {
-    if (!this.busy()) this.editorOpen.set(false);
+    if (!this.busy()) {
+      this.editorOpen.set(false);
+      this.error.set('');
+    }
   }
 
   private replace(stack: PersonalStack) {
@@ -149,8 +164,15 @@ export class MemberStacksComponent implements OnInit {
     });
   }
 
-  async save() {
-    if (!this.name.trim() || this.items.some((item) => !item.body.trim())) return;
+  async save(formValid: boolean) {
+    if (this.busy()) return;
+    if (!formValid || !this.name.trim() || this.items.some((item) => !item.body.trim())) {
+      this.error.set(
+        'Enter a stack name and content for every item. Check the field length limits, or remove any unused items.'
+      );
+      this.focusElement('stack-editor-error');
+      return;
+    }
     await this.action(async () => {
       const stack = this.editing();
       const edit = {
@@ -159,9 +181,16 @@ export class MemberStacksComponent implements OnInit {
         items: this.items.map((item) => ({ ...item, body: item.body.trim() })),
         expectedRevision: stack?.revision ?? 0
       };
-      this.replace(await (stack ? this.api.save(stack, edit) : this.api.create(edit)));
+      const saved = await (stack ? this.api.save(stack, edit) : this.api.create(edit));
+      this.replace(saved);
+      this.savedStackId.set(saved.id);
       this.editorOpen.set(false);
-      this.notice.set('Draft saved. Submit it when you are ready for admin approval.');
+      this.notice.set(
+        stack
+          ? 'Changes saved to your personal stacks.'
+          : 'Stack created and added to your personal stacks.'
+      );
+      this.focusElement('personal-stack-' + saved.id);
     });
   }
 

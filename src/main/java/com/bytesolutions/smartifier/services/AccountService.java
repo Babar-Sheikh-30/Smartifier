@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Set;
 import com.bytesolutions.smartifier.models.Account;
 import com.bytesolutions.smartifier.models.Account.Role;
+import com.bytesolutions.smartifier.models.ContentStack;
 import com.bytesolutions.smartifier.repositories.AccountRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
@@ -73,10 +74,18 @@ public class AccountService implements UserDetailsService {
     }
 
     public Account subscribe(String email, String stack, boolean subscribed) {
-        if (!Set.of("everyday-science", "words-and-language", "learning-habits").contains(stack)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose one of the three available stacks.");
+        if (stack == null || stack.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose an available stack.");
         }
         Account account = current(email);
+        boolean defaultStack = Set.of("everyday-science", "words-and-language", "learning-habits").contains(stack);
+        if (!defaultStack && !(account.role() == Role.MEMBER && (!subscribed || account.premium())
+                && mongo.exists(org.springframework.data.mongodb.core.query.Query.query(
+                        org.springframework.data.mongodb.core.query.Criteria.where("id").is(stack)
+                                .and("ownerId").is(account.id()).and("defaultStack").is(false)), ContentStack.class))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Choose a default stack or one of your own premium stacks.");
+        }
         // Legacy members may have a missing or blank phone number and must add one before subscribing.
         if (subscribed) normalizePhone(account.phoneNumber());
         // Update just this stack so simultaneous requests cannot overwrite other subscriptions.

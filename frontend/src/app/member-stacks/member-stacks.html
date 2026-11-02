@@ -66,14 +66,32 @@
   </div>
 
   @if (editorOpen()) {
-  <form #stackForm="ngForm" (ngSubmit)="save()" class="stack-editor" aria-labelledby="editor-title">
+  <form
+    #stackForm="ngForm"
+    (ngSubmit)="save(stackForm.valid === true)"
+    class="stack-editor"
+    aria-labelledby="editor-title"
+  >
     <fieldset [disabled]="busy()">
       <legend id="editor-title">
         {{ editing() ? 'Save a new version' : 'Create your stack' }}
       </legend>
       <p class="field-hint">
-        Saving keeps previous versions. Editing a copy never changes the default.
+        {{ editing() ? 'Save your changes as a new version in your personal stacks.' : 'Enter a name
+        and at least one content item, then choose Create stack to add it to your personal stacks.'
+        }}
       </p>
+      <div class="actions">
+        <button class="button button-small" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Saving...' : editing() ? 'Save changes' : 'Create stack' }}
+        </button>
+        <button class="button button-small button-outline" type="button" (click)="cancel()">
+          Cancel
+        </button>
+      </div>
+      @if (error()) {
+      <p id="stack-editor-error" class="form-error" role="alert" tabindex="-1">{{ error() }}</p>
+      }
       <label for="stack-name">Stack name</label>
       <input
         id="stack-name"
@@ -150,8 +168,8 @@
         >
           Add content item
         </button>
-        <button class="button button-small" type="submit" [disabled]="stackForm.invalid || busy()">
-          {{ busy() ? 'Saving...' : 'Save draft' }}
+        <button class="button button-small" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Saving...' : editing() ? 'Save changes' : 'Create stack' }}
         </button>
         <button class="button button-small button-outline" type="button" (click)="cancel()">
           Cancel
@@ -160,10 +178,19 @@
       <p class="field-hint">Up to 50 items per stack and 40 saved versions.</p>
     </fieldset>
   </form>
+  }
+  <h3 id="personal-stack-list-title">Your personal stacks ({{ personal().length }})</h3>
+  @if (notice()) {
+  <p class="form-success" role="status">{{ notice() }}</p>
   } @if (!loading() && personal().length === 0) {
   <p>You have no personal stacks yet. Start from scratch or make a copy above.</p>
   } @for (stack of personal(); track stack.id) {
-  <article class="stack-card personal-card">
+  <article
+    class="stack-card personal-card"
+    [id]="'personal-stack-' + stack.id"
+    tabindex="-1"
+    [class.just-saved]="savedStackId() === stack.id"
+  >
     <h3>{{ latest(stack).name }}</h3>
     <p>{{ latest(stack).description }}</p>
     <p class="field-hint">
@@ -178,6 +205,15 @@
     <p>{{ latest(stack).reviewNote }}</p>
     }
     <div class="actions">
+      <button
+        class="button button-small"
+        type="button"
+        [disabled]="busy() || loading() || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
+        [attr.aria-pressed]="subscribed(stack.id)"
+        (click)="toggle(stack.id)"
+      >
+        {{ subscribed(stack.id) ? 'Unsubscribe' : 'Subscribe' }}
+      </button>
       <button
         class="button button-small button-outline"
         type="button"
@@ -239,7 +275,7 @@
 <p class="field-hint">
   Premium members can create mixed-content stacks and customize personal copies of the defaults.
 </p>
-} @if (error()) {
+} @if (error() && !editorOpen()) {
 <p class="form-error" role="alert">{{ error() }}</p>
 @if (!editorOpen()) {
 <button
@@ -250,6 +286,6 @@
 >
   Reload stacks
 </button>
-} } @if (notice()) {
+} } @if (notice() && !auth.user()?.premium) {
 <p class="form-success" role="status">{{ notice() }}</p>
 }

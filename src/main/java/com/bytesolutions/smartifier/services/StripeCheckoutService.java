@@ -44,6 +44,7 @@ public class StripeCheckoutService {
         form.add("line_items[0][quantity]", "1");
         form.add("customer_email", email);
         form.add("client_reference_id", email);
+        form.add("metadata[smartifier_price_id]", priceId);
         form.add("success_url", baseUrl + "/member/dashboard?checkout=returned");
         form.add("cancel_url", baseUrl + "/member/dashboard?checkout=cancelled");
         try {

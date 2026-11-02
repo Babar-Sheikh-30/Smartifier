@@ -1,4 +1,4 @@
-﻿# Smartifier by Byte Solutions
+# Smartifier by Byte Solutions
 
 Smartifier delivers bite-sized knowledge by text message. The current application is a responsive landing page with membership information, example knowledge stacks, and an interactive text-message preview.
 
@@ -90,7 +90,147 @@ Stripe publishes this fake Visa card for testing. It is safe to include these de
 
 Open http://localhost:8080, sign in as a member, click **Pay for premium**, and enter these values on the hosted Stripe page. After submitting, check the same Stripe sandbox's payment list for the simulated successful payment. Keep real card details and all secret API keys out of the README and source control. See [Stripe's official test card documentation](https://docs.stripe.com/testing) and [API key documentation](https://docs.stripe.com/keys).
 
-This integration collects payment only: it does not automatically grant or revoke premium access from Stripe. Return URLs are not proof of payment. Before selling premium access, implement verified Stripe webhooks to update membership state, including subscription cancellation and renewal handling. See [Stripe Checkout Session API](https://docs.stripe.com/api/checkout/sessions/create) and [payment fulfillment](https://docs.stripe.com/checkout/fulfillment).
+Successful paid Checkout sessions automatically grant premium through the signed webhook at `/api/payments/stripe/webhook`. The handler accepts `checkout.session.completed` and `checkout.session.async_payment_succeeded`, verifies the raw payload signature with `STRIPE_WEBHOOK_SECRET` (including a five-minute timestamp tolerance), and requires `payment_status=paid` and the configured Smartifier price metadata. The authenticated member email is attached by the server when creating Checkout. Repeated deliveries safely set the same premium flag without replacing other account fields. Return URLs never grant access. Sessions created before this integration lack the metadata; start a new checkout to test automatic activation.
+
+This implements initial activation only. Subscription cancellations, failed renewals, refunds, and premium revocation are not automated yet. Use one-time `payment` mode for the current premium purchase flow. See [Stripe payment fulfillment](https://docs.stripe.com/checkout/fulfillment).
+
+### Receive test webhooks locally
+
+Use this temporary setup to test automatic premium activation on your own computer. You need Docker Desktop running, this repository, and access to a Stripe sandbox. You do not need a public domain, a Dashboard webhook endpoint, or a separate Stripe CLI installation.
+
+#### What the pieces do
+
+- **Checkout** is Stripe's payment page.
+- **Webhook** is Smartifier's `/api/payments/stripe/webhook` endpoint. A verified successful payment enables premium for the member who started Checkout.
+- **Listener** is the included `stripe-listener` Docker service. It receives sandbox events from Stripe and forwards them to the backend inside Docker. Stripe cannot send requests directly to your computer's `localhost`.
+
+| Setting | Where to get it | Purpose |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` (`sk_test_...`) | Stripe sandbox's API keys page | Lets the backend create Checkout sessions and the listener connect to Stripe |
+| `STRIPE_PRICE_ID` (`price_...`) | The sandbox product's price details | Selects the premium price charged at Checkout |
+| `STRIPE_WEBHOOK_SECRET` (`whsec_...`) | Your running local listener's logs | Lets the backend verify incoming webhook signatures |
+
+The listener's signing secret does **not** appear in the Stripe Dashboard. Dashboard webhook destinations have separate signing secrets. Each teammate should use the secret printed by their own local listener.
+
+#### 1. Configure sandbox payments
+
+Open PowerShell in the repository root. Create `.env` only if you do not already have one:
+
+```powershell
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item -LiteralPath .env.example -Destination .env
+}
+```
+
+In Stripe, select a sandbox. Copy its secret API key, create a premium product with a **one-time** price, and copy that price's ID. Both must belong to the same sandbox.
+
+Edit your local `.env`:
+
+```dotenv
+STRIPE_SECRET_KEY=sk_test_your_sandbox_key
+STRIPE_PRICE_ID=price_your_sandbox_price
+STRIPE_WEBHOOK_SECRET=
+STRIPE_CHECKOUT_MODE=payment
+SMARTIFIER_PUBLIC_URL=http://localhost:8080
+```
+
+Leave the webhook secret blank for now. `.env` is ignored by Git and excluded from Docker builds. Keep API keys and signing secrets out of commits, screenshots, and chat.
+
+#### 2. Start the app and listener
+
+Run:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build -d backend
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe up -d stripe-listener
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe logs -f stripe-listener
+```
+
+The first build can take a few minutes. The local Compose override avoids exposing Docker MongoDB on port 27017, so it can coexist with an installed MongoDB service.
+
+Wait for the listener to print:
+
+```text
+Ready! ... Your webhook signing secret is whsec_...
+```
+
+Copy the complete `whsec_...` value. Press **Ctrl+C** to leave the log view; the listener continues running in the background because it was started with `-d`.
+
+#### 3. Give the backend the listener's secret
+
+Update the existing line in `.env`:
+
+```dotenv
+STRIPE_WEBHOOK_SECRET=whsec_the_value_from_your_listener
+```
+
+Recreate the backend so it loads the updated environment:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d backend
+```
+
+A plain `docker restart` does not reload changes from `.env`. You do not need another image build just to change the secret.
+
+#### 4. Verify automatic premium activation
+
+1. Open http://localhost:8080 and register a **new free member**. Use a distinct test email for each teammate.
+2. Sign in and choose **Pay for premium**.
+3. Complete Checkout with Stripe's sandbox Visa:
+
+   | Field | Test value |
+   | --- | --- |
+   | Card number | `4242 4242 4242 4242` |
+   | Expiry | Any future date |
+   | CVC | Any three digits |
+   | Postal code | For example, `M5V 2T6` |
+
+4. Check the listener logs. The `checkout.session.completed` event should be forwarded with HTTP **200**.
+5. Refresh the member dashboard after a few seconds. It should say **Premium member** and show the personal stack editor.
+
+Use a fresh Checkout started by this app. Older sessions created before webhook support lack the Smartifier price metadata and do not activate premium. The generic `stripe trigger checkout.session.completed` fixture also lacks the member reference and price metadata, so it does not upgrade an account.
+
+An account already upgraded manually cannot demonstrate the free-to-premium transition. Docker also uses its own database volume; accounts in a separately installed MongoDB are different accounts.
+
+#### Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Listener never prints `Ready!` | Docker Desktop is running, network access works, and `STRIPE_SECRET_KEY` is a valid sandbox key. |
+| No event appears after paying | The listener is running and Checkout uses the same sandbox as the listener. |
+| Webhook returns HTTP 400 | The backend has the exact `whsec_...` from this listener, and you recreated the backend after editing `.env`. An incorrect system clock can also fail timestamp verification. |
+| Webhook returns HTTP 503 | `STRIPE_WEBHOOK_SECRET` or `STRIPE_PRICE_ID` is missing in the backend environment. |
+| Webhook returns HTTP 409 | The Checkout member could not be found in the backend database. |
+| HTTP 200 but account stays free | Start a new Checkout from the app with a fresh free member. Confirm the payment succeeded and the configured price has not changed since Checkout began. |
+
+To inspect logs, keep their secrets private:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe logs --tail 30 stripe-listener
+docker compose -f docker-compose.yml -f docker-compose.local.yml logs --tail 50 backend
+```
+
+If you recreate the listener or change sandboxes, check its signing secret again and update `.env` if needed. Changing the API key also requires recreating the listener with the `up -d stripe-listener` command above.
+
+#### Stop the temporary setup
+
+Stop just the listener:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe stop stripe-listener
+```
+
+Or stop the listener, app, and database while retaining accounts and stacks:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe stop
+```
+
+For a later session, repeat the startup commands, check the listener secret, and recreate the backend if it changed.
+
+This integration activates premium after a successful payment. SMS delivery, refunds, subscription cancellations, and failed-renewal revocation are not implemented. The guide uses one-time payment mode.
+
+References: [Stripe local webhook testing](https://docs.stripe.com/checkout/fulfillment#test-your-event-handler-locally), [webhook signature secrets](https://docs.stripe.com/events/manage-webhook-endpoints#signature-errors), and [Stripe test cards](https://docs.stripe.com/testing#cards).
 
 ### Stripe in Docker
 
@@ -110,14 +250,14 @@ Both member tiers can subscribe to the three defaults: Everyday science, Words a
 
 Premium members have a personal workspace on the same member dashboard:
 
-- **Create a stack** opens an editor for its name, description, and mixed content items. Each item has a type, body, optional answer/definition/punchline, and optional attribution/source.
+- **Create a stack** opens an editor for its name, description, and mixed content items. Each item has a type, body, optional answer/definition/punchline, and optional attribution/source. Choose **Create stack** in the editor to save it into **Your personal stacks**; the editor closes and the saved card is highlighted. Each personal card has **Subscribe/Unsubscribe** controls.
 - **Make a personal copy** copies the published default into an independent, privately owned draft. The original remains unchanged. Later changes to the original do not automatically change the copy.
-- **Save draft** always saves a new content version for an existing personal stack. Previous content stays available under **Content and version history**. **Use this version as a draft** lets a member start a new version from an older snapshot.
+- **Save changes** always saves a new content version for an existing personal stack. Previous content stays available under **Content and version history**. **Use this version as a draft** lets a member start a new version from an older snapshot.
 - **Submit for approval** marks the saved version `PENDING_REVIEW`. Its content becomes read-only; further edits save another draft version. Submitting never approves or publishes content.
 
 Only the owning premium member can access a personal stack through these APIs. Free members receive default summaries, without their content or personal editing controls. Server-side checks enforce membership, ownership, session authentication, and CSRF protection. New and legacy accounts default to free; registration cannot grant premium access. Conflicting saves return an error instead of overwriting another saved version.
 
-The admin dashboard and approval/rejection controls are intentionally deferred. Submitted versions remain pending until the future review workflow is implemented. Personal drafts are not available for subscription or text delivery yet.
+The admin dashboard and approval/rejection controls are intentionally deferred. Submitted versions remain pending until the future review workflow is implemented. Premium members can subscribe to their own saved personal stacks, including drafts, using the same subscription controls as defaults. Subscriptions stay private and require a mobile number; subscribing does not publish a stack or submit it for approval. Other members' personal stacks cannot be subscribed to. Text delivery is not implemented yet.
 
 ### Preview premium locally
 

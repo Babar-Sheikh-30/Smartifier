@@ -23,6 +23,14 @@ p {
 .stack-card h3 {
   font-size: 18px;
 }
+.personal-card.just-saved {
+  border-color: #527044;
+  background: #f6f8f1;
+}
+.personal-card:focus {
+  outline: 2px solid #527044;
+  outline-offset: 3px;
+}
 .stack-grid .button {
   margin-block: 6px;
 }

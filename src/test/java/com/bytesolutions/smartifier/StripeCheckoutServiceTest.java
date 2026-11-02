@@ -40,6 +40,7 @@ class StripeCheckoutServiceTest {
                 .andExpect(content().formDataContains(java.util.Map.of(
                         "line_items[0][price]", "price_premium", "line_items[0][quantity]", "1",
                         "customer_email", "member@example.com", "mode", "payment",
+                        "metadata[smartifier_price_id]", "price_premium",
                         "success_url", "http://localhost:8080/member/dashboard?checkout=returned",
                         "cancel_url", "http://localhost:8080/member/dashboard?checkout=cancelled")))
                 .andRespond(withSuccess("{\"url\":\"https://checkout.stripe.com/c/pay/test\"}", MediaType.APPLICATION_JSON));

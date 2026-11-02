@@ -23,7 +23,7 @@ export class DashboardComponent {
   private readonly checkoutResult = inject(ActivatedRoute).snapshot.queryParamMap.get('checkout');
   readonly paymentNotice =
     this.checkoutResult === 'returned'
-      ? 'You have returned from Stripe checkout. Check your email for your payment receipt.'
+      ? 'Your payment is being confirmed. If premium is not active yet, refresh this page in a few seconds.'
       : this.checkoutResult === 'cancelled'
         ? 'Checkout was cancelled. You can try again whenever you are ready.'
         : '';

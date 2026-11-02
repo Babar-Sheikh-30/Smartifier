@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import com.bytesolutions.smartifier.models.Account;
+import com.bytesolutions.smartifier.models.ContentStack;
 import com.bytesolutions.smartifier.repositories.AccountRepository;
 import com.bytesolutions.smartifier.services.AccountService;
 import org.junit.jupiter.api.Test;
@@ -22,9 +23,13 @@ class SubscriptionBoundaryTest {
     private final AccountService service = new AccountService(repository, mock(PasswordEncoder.class), mongo);
 
     private void accountWithPhone(String phone) {
+        account(false, phone);
+    }
+
+    private void account(boolean premium, String phone) {
         when(repository.findByEmail("member@example.com")).thenReturn(Optional.of(
                 new Account("1", "Member", "member@example.com", "hash", Account.Role.MEMBER,
-                        Instant.EPOCH, phone, Set.of())));
+                        Instant.EPOCH, phone, Set.of(), premium)));
     }
 
     @Test
@@ -45,13 +50,56 @@ class SubscriptionBoundaryTest {
     }
 
     @Test
-    void unsupportedStacksRejectWithoutReadingOrWritingAccount() {
+    void freeMembersCannotSubscribeToUnsupportedOrPersonalStacks() {
+        accountWithPhone("+14165551234");
         for (String stack : new String[] {"", " ", "unknown", "Everyday-science", "everyday-science "}) {
             var error = assertThrows(ResponseStatusException.class,
                     () -> service.subscribe("member@example.com", stack, true));
             assertEquals(400, error.getStatusCode().value());
         }
-        verifyNoInteractions(repository, mongo);
+        verifyNoInteractions(mongo);
+    }
+
+    @Test
+    void premiumMemberCanSubscribeAndUnsubscribeOnlyToOwnedPersonalStacks() {
+        account(true, "+14165551234");
+        when(mongo.exists(any(Query.class), eq(ContentStack.class))).thenReturn(true);
+        for (boolean subscribed : new boolean[] {true, false}) {
+            service.subscribe("member@example.com", "personal-1", subscribed);
+            var ownership = org.mockito.ArgumentCaptor.forClass(Query.class);
+            verify(mongo).exists(ownership.capture(), eq(ContentStack.class));
+            assertEquals("personal-1", ownership.getValue().getQueryObject().getString("id"));
+            assertEquals("1", ownership.getValue().getQueryObject().getString("ownerId"));
+            assertEquals(false, ownership.getValue().getQueryObject().getBoolean("defaultStack"));
+            var update = org.mockito.ArgumentCaptor.forClass(Update.class);
+            verify(mongo).updateFirst(any(Query.class), update.capture(), eq(Account.class));
+            assertEquals("personal-1", update.getValue().getUpdateObject()
+                    .get(subscribed ? "$addToSet" : "$pull", org.bson.Document.class).getString("subscriptions"));
+            clearInvocations(mongo);
+        }
+    }
+
+    @Test
+    void missingOrOtherMembersStacksCannotBeSubscribedToOrUnsubscribedFrom() {
+        account(true, "+14165551234");
+        when(mongo.exists(any(Query.class), eq(ContentStack.class))).thenReturn(false);
+        for (boolean subscribed : new boolean[] {true, false}) {
+            assertEquals(400, assertThrows(ResponseStatusException.class,
+                    () -> service.subscribe("member@example.com", "not-owned", subscribed)).getStatusCode().value());
+        }
+        verify(mongo, never()).updateFirst(any(Query.class), any(Update.class), eq(Account.class));
+    }
+
+    @Test
+    void personalSubscriptionsNeedPhoneButOwnersCanRemoveThemAfterDowngrade() {
+        account(true, null);
+        when(mongo.exists(any(Query.class), eq(ContentStack.class))).thenReturn(true);
+        assertThrows(ResponseStatusException.class,
+                () -> service.subscribe("member@example.com", "personal-1", true));
+        verify(mongo, never()).updateFirst(any(Query.class), any(Update.class), eq(Account.class));
+        account(false, null);
+        assertDoesNotThrow(() -> service.subscribe("member@example.com", "personal-1", false));
+        verify(mongo).updateFirst(any(Query.class), any(Update.class), eq(Account.class));
     }
 
     @Test

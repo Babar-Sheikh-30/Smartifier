@@ -93,6 +93,13 @@ class ContentStackIntegrationTest {
             assertEquals(200, copied.statusCode(), copied.body());
             var copy = Document.parse(copied.body());
             String id = copy.getString("id");
+            var subscription = new Document("stack", id).append("subscribed", true);
+            assertEquals(403, post(owner, "/api/member/subscriptions", subscription.toJson(), false, false).statusCode());
+            for (int retry = 0; retry < 2; retry++) {
+                var subscribed = post(owner, "/api/member/subscriptions", subscription.toJson(), true, false);
+                assertEquals(200, subscribed.statusCode(), subscribed.body());
+                assertEquals(java.util.List.of(id), Document.parse(subscribed.body()).getList("subscriptions", String.class));
+            }
             assertEquals("everyday-science", copy.getString("sourceStackId"));
             var first = copy.getList("versions", Document.class).getFirst();
             var edit = new Document("name", "My mixed stack").append("description", "Independent copy")
@@ -120,6 +127,12 @@ class ContentStackIntegrationTest {
             database.getCollection("users").updateOne(new Document("email", "other@example.test"),
                     new Document("$set", new Document("premium", true)));
             assertEquals("[]", get(other, path).body());
+            assertEquals(400, post(other, "/api/member/subscriptions", subscription.toJson(), true, false).statusCode());
+            subscription.put("subscribed", false);
+            assertEquals(400, post(other, "/api/member/subscriptions", subscription.toJson(), true, false).statusCode());
+            var unsubscribed = post(owner, "/api/member/subscriptions", subscription.toJson(), true, false);
+            assertEquals(200, unsubscribed.statusCode(), unsubscribed.body());
+            assertTrue(Document.parse(unsubscribed.body()).getList("subscriptions", String.class).isEmpty());
             edit.put("expectedRevision", pending.get("revision"));
             assertEquals(404, post(other, path + "/" + id + "/versions", edit.toJson(), true, false).statusCode());
             assertEquals(404, post(owner, path + "/everyday-science/versions", edit.toJson(), true, false).statusCode());
