@@ -12,7 +12,8 @@ on:
 jobs:
   backend:
     name: Backend - Maven Test
-    runs-on: ubuntu-latest
+    # MongoDB 8.0 cannot start on kernels >= 6.19 used by Ubuntu 26.04 runners.
+    runs-on: ubuntu-22.04
 
     services:
       mongodb:
