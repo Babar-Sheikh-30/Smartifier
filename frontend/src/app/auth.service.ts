@@ -10,6 +10,7 @@ export interface Profile {
   createdAt: string;
   phoneNumber: string | null;
   subscriptions: string[];
+  premium: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,7 +29,7 @@ export class AuthService {
     }
   }
 
-  private async headers(): Promise<Record<string, string>> {
+  async headers(): Promise<Record<string, string>> {
     // Fetch a fresh token after login/logout when Spring rotates it.
     const csrf = await firstValueFrom(
       this.http.get<{ headerName: string; token: string }>('/api/auth/csrf')
@@ -72,6 +73,17 @@ export class AuthService {
       )
     );
     this.user.set(user);
+  }
+
+  async createCheckout(): Promise<string> {
+    const checkout = await firstValueFrom(
+      this.http.post<{ url: string }>(
+        '/api/member/payments/checkout',
+        {},
+        { headers: await this.headers() }
+      )
+    );
+    return checkout.url;
   }
 
   async login(email: string, password: string): Promise<Profile> {

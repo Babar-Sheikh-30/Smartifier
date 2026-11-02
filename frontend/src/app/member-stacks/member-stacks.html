@@ -1,0 +1,255 @@
+<section aria-labelledby="default-stacks-title">
+  <p class="eyebrow">INCLUDED WITH YOUR MEMBERSHIP</p>
+  <h2 id="default-stacks-title">Choose what sparks your curiosity.</h2>
+  <p>Three default stacks, each with a mix of facts, quotes, jokes, and vocabulary.</p>
+  <p class="field-hint">Save your subscriptions now. Text delivery is coming soon.</p>
+  @if (!auth.user()?.phoneNumber) {
+  <p class="form-error">Add your mobile number above before subscribing.</p>
+  } @if (loading()) {
+  <p role="status">Loading your stacks...</p>
+  }
+  <div class="stack-grid">
+    @for (stack of defaults(); track stack.id) {
+    <article class="stack-card">
+      <h3>{{ stack.name }}</h3>
+      <p>{{ stack.description }}</p>
+      <p class="field-hint">{{ stack.itemCount }} mixed content items</p>
+      <button
+        class="button button-small"
+        type="button"
+        [disabled]="busy() || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
+        [attr.aria-pressed]="subscribed(stack.id)"
+        (click)="toggle(stack.id)"
+      >
+        {{ subscribed(stack.id) ? 'Unsubscribe' : 'Subscribe' }}
+      </button>
+      @if (auth.user()?.premium) {
+      <button
+        class="button button-small button-outline"
+        type="button"
+        [disabled]="busy() || editorOpen()"
+        (click)="copy(stack.id)"
+      >
+        Make a personal copy
+      </button>
+      }
+    </article>
+    }
+  </div>
+</section>
+
+@if (auth.user()?.premium) {
+<section aria-labelledby="personal-stacks-title" class="personal-stacks">
+  <p class="eyebrow">YOUR PREMIUM WORKSPACE</p>
+  <h2 id="personal-stacks-title">Make it your own.</h2>
+  <p>
+    Create a mixed-content stack or customize a copy of a default. Your drafts stay private. Submit
+    a saved draft for approval before it can be published.
+  </p>
+  <div class="actions">
+    <button
+      class="button button-small"
+      type="button"
+      [disabled]="busy() || loading() || editorOpen()"
+      (click)="start()"
+    >
+      Create a stack
+    </button>
+    <button
+      class="button button-small button-outline"
+      type="button"
+      [disabled]="busy() || loading() || editorOpen()"
+      (click)="load()"
+    >
+      Reload stacks
+    </button>
+  </div>
+
+  @if (editorOpen()) {
+  <form #stackForm="ngForm" (ngSubmit)="save()" class="stack-editor" aria-labelledby="editor-title">
+    <fieldset [disabled]="busy()">
+      <legend id="editor-title">
+        {{ editing() ? 'Save a new version' : 'Create your stack' }}
+      </legend>
+      <p class="field-hint">
+        Saving keeps previous versions. Editing a copy never changes the default.
+      </p>
+      <label for="stack-name">Stack name</label>
+      <input
+        id="stack-name"
+        name="stackName"
+        [(ngModel)]="name"
+        required
+        maxlength="100"
+        pattern=".*\S.*"
+      />
+      <label for="stack-description">Description</label>
+      <textarea
+        id="stack-description"
+        name="description"
+        [(ngModel)]="description"
+        maxlength="500"
+        rows="2"
+      ></textarea>
+      @for (item of items; track item; let index = $index) {
+      <fieldset class="content-item">
+        <legend>Item {{ index + 1 }}</legend>
+        <label [for]="'item-type-' + index">Content type</label>
+        <select [id]="'item-type-' + index" [name]="'type-' + index" [(ngModel)]="item.type">
+          @for (type of types; track type) {
+          <option [value]="type">{{ type }}</option>
+          }
+        </select>
+        <label [for]="'item-body-' + index"
+          >{{ item.type === 'VOCABULARY' ? 'Word or phrase' : item.type === 'JOKE' ? 'Joke or setup'
+          : 'Content' }}</label
+        >
+        <textarea
+          [id]="'item-body-' + index"
+          [name]="'body-' + index"
+          [(ngModel)]="item.body"
+          required
+          maxlength="1000"
+          pattern="[\s\S]*\S[\s\S]*"
+          rows="3"
+        ></textarea>
+        <label [for]="'item-answer-' + index"
+          >{{ item.type === 'VOCABULARY' ? 'Definition' : item.type === 'JOKE' ? 'Punchline
+          (optional)' : 'Extra context (optional)' }}</label
+        >
+        <textarea
+          [id]="'item-answer-' + index"
+          [name]="'answer-' + index"
+          [(ngModel)]="item.answer"
+          maxlength="1000"
+          rows="2"
+        ></textarea>
+        <label [for]="'item-source-' + index">Attribution or source (optional)</label>
+        <input
+          [id]="'item-source-' + index"
+          [name]="'source-' + index"
+          [(ngModel)]="item.attribution"
+          maxlength="300"
+        />
+        <button
+          class="button button-small button-outline"
+          type="button"
+          [disabled]="items.length === 1"
+          (click)="removeItem(index)"
+        >
+          Remove item {{ index + 1 }}
+        </button>
+      </fieldset>
+      }
+      <div class="actions">
+        <button
+          class="button button-small button-outline"
+          type="button"
+          [disabled]="items.length >= 50"
+          (click)="addItem()"
+        >
+          Add content item
+        </button>
+        <button class="button button-small" type="submit" [disabled]="stackForm.invalid || busy()">
+          {{ busy() ? 'Saving...' : 'Save draft' }}
+        </button>
+        <button class="button button-small button-outline" type="button" (click)="cancel()">
+          Cancel
+        </button>
+      </div>
+      <p class="field-hint">Up to 50 items per stack and 40 saved versions.</p>
+    </fieldset>
+  </form>
+  } @if (!loading() && personal().length === 0) {
+  <p>You have no personal stacks yet. Start from scratch or make a copy above.</p>
+  } @for (stack of personal(); track stack.id) {
+  <article class="stack-card personal-card">
+    <h3>{{ latest(stack).name }}</h3>
+    <p>{{ latest(stack).description }}</p>
+    <p class="field-hint">
+      Version {{ latest(stack).number }} · {{ statusLabels[latest(stack).status] }} · {{
+      latest(stack).items.length }} items
+    </p>
+    @if (stack.sourceStackId) {
+    <p class="field-hint">
+      Independent copy of a default stack, version {{ stack.sourceVersion }}.
+    </p>
+    } @if (latest(stack).reviewNote) {
+    <p>{{ latest(stack).reviewNote }}</p>
+    }
+    <div class="actions">
+      <button
+        class="button button-small button-outline"
+        type="button"
+        [disabled]="busy() || editorOpen() || stack.versions.length >= 40"
+        (click)="start(stack)"
+      >
+        Edit as a new version
+      </button>
+      @if (latest(stack).status === 'DRAFT') {
+      <button
+        class="button button-small"
+        type="button"
+        [disabled]="busy() || editorOpen()"
+        (click)="submit(stack)"
+      >
+        Submit for approval
+      </button>
+      }
+    </div>
+    <details>
+      <summary>Content and version history ({{ stack.versions.length }})</summary>
+      @for (version of stack.versions.slice().reverse(); track version.number) {
+      <section class="version">
+        <h4>Version {{ version.number }}: {{ version.name }}</h4>
+        <p class="field-hint">
+          {{ statusLabels[version.status] }} · {{ version.createdAt | date:'medium' }}
+        </p>
+        @if (version.reviewNote) {
+        <p>{{ version.reviewNote }}</p>
+        }
+        <ol>
+          @for (item of version.items; track $index) {
+          <li>
+            <span class="field-hint">{{ item.type }}</span>
+            <p class="content-text">{{ item.body }}</p>
+            @if (item.answer) {
+            <p class="content-text">{{ item.answer }}</p>
+            } @if (item.attribution) {
+            <p class="field-hint">Source: {{ item.attribution }}</p>
+            }
+          </li>
+          }
+        </ol>
+        <button
+          class="button button-small button-outline"
+          type="button"
+          [disabled]="busy() || editorOpen() || stack.versions.length >= 40"
+          (click)="start(stack, version)"
+        >
+          Use this version as a draft
+        </button>
+      </section>
+      }
+    </details>
+  </article>
+  }
+</section>
+} @else {
+<p class="field-hint">
+  Premium members can create mixed-content stacks and customize personal copies of the defaults.
+</p>
+} @if (error()) {
+<p class="form-error" role="alert">{{ error() }}</p>
+@if (!editorOpen()) {
+<button
+  class="button button-small button-outline"
+  type="button"
+  [disabled]="busy() || loading()"
+  (click)="load()"
+>
+  Reload stacks
+</button>
+} } @if (notice()) {
+<p class="form-success" role="status">{{ notice() }}</p>
+}

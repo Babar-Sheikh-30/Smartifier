@@ -51,6 +51,7 @@ public class AccountService implements UserDetailsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a mobile number with country code, such as +14165551234.");
         }
         String normalized = phoneNumber.replaceAll("[() .-]", "");
+        if (!normalized.startsWith("+")) normalized = "+" + normalized;
         if (!normalized.matches("\\+[1-9][0-9]{7,14}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a mobile number with country code, such as +14165551234.");
         }

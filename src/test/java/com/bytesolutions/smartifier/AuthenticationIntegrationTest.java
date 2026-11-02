@@ -78,7 +78,7 @@ class AuthenticationIntegrationTest {
 
     private String registration(String email, String confirmation) {
         return new Document("name", "Test Member").append("email", email).append("password", PASSWORD)
-                .append("phoneNumber", "+14165551234").append("passwordConfirmation", confirmation).append("role", "ADMIN").toJson();
+                .append("phoneNumber", "14165551234").append("passwordConfirmation", confirmation).append("role", "ADMIN").toJson();
     }
 
     @Test
@@ -139,7 +139,7 @@ class AuthenticationIntegrationTest {
             assertEquals(200, post(member, "/api/member/subscriptions", subscription, "application/json", true).statusCode());
         }
         assertTrue(Document.parse(get(member, "/api/auth/me").body()).getList("subscriptions", String.class).isEmpty());
-        assertEquals(400, post(member, "/api/member/phone", "{\"phoneNumber\":\"4165551234\"}",
+        assertEquals(400, post(member, "/api/member/phone", "{\"phoneNumber\":\"123\"}",
                 "application/json", true).statusCode());
         assertEquals("+14165551234", Document.parse(get(member, "/api/auth/me").body()).getString("phoneNumber"));
         var updatedPhone = post(member, "/api/member/phone", "{\"phoneNumber\":\"+1 (647) 555-1234\"}",

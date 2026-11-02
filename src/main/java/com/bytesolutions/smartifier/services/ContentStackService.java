@@ -1,0 +1,118 @@
+package com.bytesolutions.smartifier.services;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import com.bytesolutions.smartifier.models.Account;
+import com.bytesolutions.smartifier.models.ContentStack;
+import com.bytesolutions.smartifier.models.ContentStack.*;
+import com.bytesolutions.smartifier.repositories.ContentStackRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class ContentStackService {
+    private final AccountService accounts;
+    private final ContentStackRepository stacks;
+
+    public ContentStackService(AccountService accounts, ContentStackRepository stacks) {
+        this.accounts = accounts;
+        this.stacks = stacks;
+    }
+
+    public record Summary(String id, String name, String description, int itemCount) {}
+
+    public List<Summary> defaults() {
+        return stacks.findByDefaultStackTrue().stream()
+                .filter(stack -> stack.publishedVersion() != null)
+                .map(stack -> {
+                    var version = stack.versions().stream()
+                            .filter(v -> v.number() == stack.publishedVersion() && v.status() == Status.APPROVED)
+                            .findFirst().orElseThrow();
+                    return new Summary(stack.id(), version.name(), version.description(), version.items().size());
+                }).sorted(java.util.Comparator.comparing(Summary::name)).toList();
+    }
+
+    private Account premium(String email) {
+        var account = accounts.current(email);
+        if (account.role() != Account.Role.MEMBER || !account.premium()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Premium membership is required to manage personal stacks.");
+        }
+        return account;
+    }
+
+    public List<ContentStack> personal(String email) {
+        return stacks.findByOwnerId(premium(email).id()).stream()
+                .sorted(java.util.Comparator.comparing(stack -> stack.latest().createdAt(), java.util.Comparator.reverseOrder()))
+                .toList();
+    }
+
+    public ContentStack create(String email, Edit edit) {
+        var owner = premium(email);
+        return stacks.insert(new ContentStack(null, owner.id(), false, null, null, null,
+                List.of(draft(1, edit)), null));
+    }
+
+    public ContentStack copy(String email, String id) {
+        var owner = premium(email);
+        var source = stacks.findById(id).filter(ContentStack::defaultStack)
+                .filter(stack -> stack.publishedVersion() != null)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Default stack not found."));
+        var version = source.versions().stream()
+                .filter(v -> v.number() == source.publishedVersion() && v.status() == Status.APPROVED)
+                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Published version not found."));
+        var name = version.name();
+        var edit = new Edit(name.substring(0, Math.min(name.length(), 90)) + " (my copy)",
+                version.description(), version.items(), 0);
+        return stacks.insert(new ContentStack(null, owner.id(), false, source.id(), version.number(), null,
+                List.of(draft(1, edit)), null));
+    }
+
+    private ContentStack owned(String email, String id, long expectedRevision) {
+        var owner = premium(email);
+        var stack = stacks.findByIdAndOwnerId(id, owner.id()).filter(s -> !s.defaultStack())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Personal stack not found."));
+        if (stack.revision() == null || stack.revision() != expectedRevision) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before saving.");
+        }
+        return stack;
+    }
+
+    public ContentStack save(String email, String id, Edit edit) {
+        var stack = owned(email, id, edit.expectedRevision());
+        if (stack.versions().size() >= 40) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has reached its 40-version limit.");
+        }
+        var versions = new ArrayList<>(stack.versions());
+        versions.add(draft(stack.latest().number() + 1, edit));
+        return persist(stack, versions);
+    }
+
+    public ContentStack submit(String email, String id, long expectedRevision) {
+        var stack = owned(email, id, expectedRevision);
+        if (stack.latest().status() != Status.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a saved draft can be submitted for review.");
+        }
+        var versions = new ArrayList<>(stack.versions());
+        var latest = stack.latest();
+        versions.set(versions.size() - 1, new Revision(latest.number(), latest.name(), latest.description(),
+                latest.items(), Status.PENDING_REVIEW, latest.createdAt(), Instant.now(), null));
+        return persist(stack, versions);
+    }
+
+    private Revision draft(int number, Edit edit) {
+        return new Revision(number, edit.name().strip(), edit.description() == null ? "" : edit.description().strip(),
+                edit.items(), Status.DRAFT, Instant.now(), null, null);
+    }
+
+    private ContentStack persist(ContentStack stack, List<Revision> versions) {
+        try {
+            return stacks.save(new ContentStack(stack.id(), stack.ownerId(), false, stack.sourceStackId(),
+                    stack.sourceVersion(), stack.publishedVersion(), versions, stack.revision()));
+        } catch (OptimisticLockingFailureException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before saving.");
+        }
+    }
+}

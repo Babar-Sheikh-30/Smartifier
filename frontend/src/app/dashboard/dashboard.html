@@ -7,7 +7,10 @@
 <main class="account-page wrap">
   @if (auth.user(); as user) {
   <section class="account-card dashboard-card">
-    <p class="eyebrow">{{ user.role === 'ADMIN' ? 'ADMIN DASHBOARD' : 'MEMBER DASHBOARD' }}</p>
+    <p class="eyebrow">
+      {{ user.role === 'ADMIN' ? 'ADMIN DASHBOARD' : user.premium ? 'PREMIUM MEMBER' : 'FREE MEMBER'
+      }}
+    </p>
     <h1>Welcome, {{ user.name }}.</h1>
     <p class="account-intro">
       {{ user.role === 'ADMIN' ? 'Your administration dashboard is ready.' : 'Welcome to your
@@ -21,7 +24,10 @@
       <dd>{{ user.phoneNumber || 'No mobile number on file' }}</dd>
       }
       <dt>Account type</dt>
-      <dd>{{ user.role === 'ADMIN' ? 'Administrator' : 'Member' }}</dd>
+      <dd>
+        {{ user.role === 'ADMIN' ? 'Administrator' : user.premium ? 'Premium member' : 'Free member'
+        }}
+      </dd>
     </dl>
     @if (user.role === 'MEMBER') {
     <form #phoneForm="ngForm" (ngSubmit)="savePhone()">
@@ -33,13 +39,13 @@
         autocomplete="tel"
         required
         maxlength="40"
-        pattern="[+][1-9][0-9]{7,14}"
-        placeholder="+14165551234"
+        pattern="[+]?[1-9][0-9]{7,14}"
+        placeholder="14165551234"
         [(ngModel)]="phoneNumber"
         aria-describedby="member-phone-hint"
       />
       <p id="member-phone-hint" class="field-hint">
-        Include your country code, using digits only after + (for example, +14165551234).
+        Include your country code (for example, 14165551234 for Canada/US). The + is optional.
       </p>
       <button
         class="button button-small"
@@ -49,56 +55,24 @@
         {{ saving() === 'phone' ? 'Saving...' : 'Save number' }}
       </button>
     </form>
+    @if (!user.premium) {
     <section class="premium-banner" aria-labelledby="premium-title">
       <div>
         <p class="eyebrow">GO PREMIUM</p>
         <h2 id="premium-title">Keep your curiosity growing.</h2>
-        <p>Upgrade your membership when premium becomes available.</p>
+        <p>Continue to Stripe to review your premium price and pay securely.</p>
       </div>
-      <button class="button" (click)="premiumNotice.set(true)">Pay for premium</button>
+      <button class="button" (click)="payForPremium()" [disabled]="paying() || busy()">
+        {{ paying() ? 'Opening Stripe...' : 'Pay for premium' }}
+      </button>
     </section>
-    @if (premiumNotice()) {
-    <p class="form-success" role="status">
-      Premium payments are coming soon. No payment has been taken.
-    </p>
+    } @if (paymentNotice) {
+    <p class="form-success" role="status">{{ paymentNotice }}</p>
     }
-    <section aria-labelledby="stacks-title" class="member-stacks">
-      <p class="eyebrow">YOUR FREE STACKS</p>
-      <h2 id="stacks-title">Choose what sparks your curiosity.</h2>
-      <p class="account-intro">
-        Subscribe to any of these three stacks. The knowledge will arrive by text; your account only
-        manages your subscriptions.
-      </p>
-      <p class="field-hint">You can save your subscriptions now. Text delivery is coming soon.</p>
-      @if (!user.phoneNumber) {
-      <p class="form-error">Add your mobile number above before subscribing.</p>
-      }
-      <div class="stack-options">
-        @for (stack of stacks; track stack.id) {
-        <article class="stack-option">
-          <h3>{{ stack.name }}</h3>
-          <p class="field-hint">
-            {{ subscribed(stack.id) ? 'Subscribed' : 'Available with your free membership' }}
-          </p>
-          <button
-            class="button button-small"
-            [disabled]="
-                    saving() || busy() || (!user.phoneNumber && !subscribed(stack.id))
-                  "
-            [attr.aria-pressed]="subscribed(stack.id)"
-            (click)="toggleStack(stack.id)"
-          >
-            {{ saving() === stack.id ? 'Saving...' : subscribed(stack.id) ? 'Unsubscribe' :
-            'Subscribe' }}
-          </button>
-        </article>
-        }
-      </div>
-      @if (notice()) {
-      <p class="form-success" role="status">{{ notice() }}</p>
-      }
-    </section>
-    } @if (error()) {
+    <bs-member-stacks />
+    @if (notice()) {
+    <p class="form-success" role="status">{{ notice() }}</p>
+    } } @if (error()) {
     <p class="form-error" role="alert">{{ error() }}</p>
     }
   </section>

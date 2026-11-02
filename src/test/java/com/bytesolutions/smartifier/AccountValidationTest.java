@@ -45,7 +45,8 @@ public class AccountValidationTest {
         assertEquals(phone, AccountService.normalizePhone(phone + " ".repeat(40 - phone.length())));
         assertThrows(ResponseStatusException.class,
                 () -> AccountService.normalizePhone(phone + " ".repeat(41 - phone.length())));
-        for (String invalid : new String[] {null, "", "   ", "14165551234", "+04165551234", "+14165551234x", "+1\n4165551234"}) {
+        assertEquals("+14165551234", AccountService.normalizePhone("14165551234"));
+        for (String invalid : new String[] {null, "", "   ", "04165551234", "+04165551234", "+14165551234x", "+1\n4165551234"}) {
             assertThrows(ResponseStatusException.class, () -> AccountService.normalizePhone(invalid));
         }
     }

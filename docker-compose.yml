@@ -17,6 +17,10 @@ services:
       - "8080:8080"
     environment:
       SPRING_MONGODB_URI: mongodb://mongo:27017/smartifier
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      STRIPE_CHECKOUT_MODE: ${STRIPE_CHECKOUT_MODE:-payment}
+      SMARTIFIER_PUBLIC_URL: ${SMARTIFIER_PUBLIC_URL:-http://localhost:8080}
     depends_on:
       - mongo
 

@@ -8,9 +8,15 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("users")
 public record Account(@Id String id, String name, String email, String passwordHash,
-                      Role role, @CreatedDate Instant createdAt, String phoneNumber, Set<String> subscriptions) {
+                      Role role, @CreatedDate Instant createdAt, String phoneNumber, Set<String> subscriptions,
+                      Boolean premium) {
     public Account {
         subscriptions = subscriptions == null ? Set.of() : Set.copyOf(subscriptions);
+        premium = Boolean.TRUE.equals(premium);
+    }
+    public Account(String id, String name, String email, String passwordHash, Role role, Instant createdAt,
+                   String phoneNumber, Set<String> subscriptions) {
+        this(id, name, email, passwordHash, role, createdAt, phoneNumber, subscriptions, false);
     }
     // Admins do not need a phone number. This constructor also supports legacy members
     // without one; new member registration requires a valid phone number.

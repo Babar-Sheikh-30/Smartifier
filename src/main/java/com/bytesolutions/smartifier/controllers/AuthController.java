@@ -34,10 +34,10 @@ public class AuthController {
                                @NotBlank String passwordConfirmation) {}
 
     public record Profile(String id, String name, String email, Account.Role role, Instant createdAt,
-                          String phoneNumber, Set<String> subscriptions) {
+                          String phoneNumber, Set<String> subscriptions, boolean premium) {
         public static Profile from(Account account) {
             return new Profile(account.id(), account.name(), account.email(), account.role(), account.createdAt(),
-                    account.phoneNumber(), account.subscriptions());
+                    account.phoneNumber(), account.subscriptions(), account.premium());
         }
     }
 

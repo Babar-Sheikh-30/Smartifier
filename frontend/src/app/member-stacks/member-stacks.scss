@@ -1,0 +1,107 @@
+:host {
+  display: block;
+  margin-top: 32px;
+}
+h2 {
+  font-size: 24px;
+}
+p {
+  line-height: 1.6;
+}
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.stack-card {
+  border: 1px solid #e3e7db;
+  border-radius: 12px;
+  padding: 20px;
+  margin-block: 16px;
+  overflow-wrap: anywhere;
+}
+.stack-card h3 {
+  font-size: 18px;
+}
+.stack-grid .button {
+  margin-block: 6px;
+}
+.personal-stacks {
+  margin-top: 32px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-block: 16px;
+}
+.stack-editor {
+  background: #f6f8f1;
+  padding: 20px;
+  border-radius: 12px;
+  margin-block: 20px;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+legend {
+  font-weight: 600;
+}
+label {
+  display: block;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+input,
+textarea,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #c4ccb8;
+  border-radius: 8px;
+  font: inherit;
+  background: white;
+}
+textarea {
+  resize: vertical;
+}
+.content-item {
+  border-top: 1px solid #d8dfce;
+  padding-block: 16px;
+  margin-top: 24px;
+}
+.content-item .button {
+  margin-top: 12px;
+}
+.version {
+  border-top: 1px solid #e3e7db;
+  margin-top: 20px;
+  padding-top: 10px;
+}
+.content-text {
+  white-space: pre-wrap;
+}
+summary {
+  cursor: pointer;
+  padding-block: 12px;
+}
+.field-hint {
+  color: #526047;
+  font-size: 14px;
+}
+.form-error {
+  color: #a12828;
+}
+.form-success {
+  color: #315c31;
+}
+@media (max-width: 680px) {
+  .stack-grid {
+    grid-template-columns: 1fr;
+  }
+}

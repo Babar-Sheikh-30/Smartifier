@@ -19,6 +19,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     ResponseEntity<Map<String, String>> validation(Exception exception) {
+        if (exception instanceof MethodArgumentNotValidException validation
+                && validation.getParameter().getContainingClass() == ContentStackController.class) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "Enter a stack name (up to 100 characters) and 1–50 content items. Each item needs a type and text (up to 1,000 characters)."));
+        }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message",
                 "Check the required fields. Passwords must use 12–64 characters with uppercase, lowercase, a number, and a special character."));
     }

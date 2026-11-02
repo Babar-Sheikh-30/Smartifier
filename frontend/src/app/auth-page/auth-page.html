@@ -7,8 +7,8 @@
     <p class="eyebrow">{{ registering ? 'JOIN SMARTIFIER' : 'WELCOME BACK' }}</p>
     <h1 id="auth-title">{{ registering ? 'Create your account' : 'Log in' }}</h1>
     <p class="account-intro">
-      {{ registering ? 'A little more knowledge starts here.' : 'Sign in to your Smartifier
-      account.' }}
+      {{ registering ? 'A little more knowledge starts here. All fields are required.' : 'Sign in to
+      your Smartifier account.' }}
     </p>
     @if (!registering && route.snapshot.queryParamMap.has('registered')) {
     <p class="form-success" role="status">Your account is ready. Log in to continue.</p>
@@ -19,19 +19,45 @@
     } @if (error()) {
     <p class="form-error" role="alert">{{ error() }}</p>
     }
-    <form #form="ngForm" (ngSubmit)="submit()">
+
+    <form #form="ngForm" (ngSubmit)="submit(form)" novalidate>
       @if (registering) {
-      <label for="name">Name</label>
+      <label for="name"
+        >Name
+        <span class="field-status" [attr.data-state]="fieldState(nameField)"
+          >{{ fieldLabel(nameField) }}</span
+        >
+      </label>
       <input
         id="name"
         name="name"
         autocomplete="name"
         required
         maxlength="100"
+        pattern=".*\S.*"
         [(ngModel)]="name"
+        #nameField="ngModel"
+        [attr.aria-invalid]="fieldState(nameField) === 'invalid'"
+        aria-describedby="name-feedback"
+        [class.field-invalid]="fieldState(nameField) === 'invalid'"
+        [class.field-valid]="fieldState(nameField) === 'valid'"
       />
+      <p
+        id="name-feedback"
+        class="field-feedback"
+        [class.invalid]="fieldState(nameField) === 'invalid'"
+      >
+        @if (fieldState(nameField) === 'invalid') { Enter your name, up to 100 characters. } @else {
+        Your name as you would like it to appear. }
+      </p>
       }
-      <label for="email">Email</label>
+
+      <label for="email"
+        >Email
+        <span class="field-status" [attr.data-state]="fieldState(emailField)"
+          >{{ fieldLabel(emailField) }}</span
+        >
+      </label>
       <input
         id="email"
         name="email"
@@ -41,9 +67,28 @@
         email
         maxlength="254"
         [(ngModel)]="email"
+        #emailField="ngModel"
+        [attr.aria-invalid]="fieldState(emailField) === 'invalid'"
+        aria-describedby="email-feedback"
+        [class.field-invalid]="fieldState(emailField) === 'invalid'"
+        [class.field-valid]="fieldState(emailField) === 'valid'"
       />
+      <p
+        id="email-feedback"
+        class="field-feedback"
+        [class.invalid]="fieldState(emailField) === 'invalid'"
+      >
+        @if (fieldState(emailField) === 'invalid') { Enter a valid email address, such as
+        name@example.com. } @else { For example, name@example.com. }
+      </p>
+
       @if (registering) {
-      <label for="phone">Mobile number</label>
+      <label for="phone"
+        >Mobile number
+        <span class="field-status" [attr.data-state]="fieldState(phoneField)"
+          >{{ fieldLabel(phoneField) }}</span
+        >
+      </label>
       <input
         id="phone"
         name="phoneNumber"
@@ -51,17 +96,34 @@
         autocomplete="tel"
         required
         maxlength="40"
-        pattern="[+][1-9][0-9]{7,14}"
-        placeholder="+14165551234"
+        pattern="[+]?[1-9][0-9]{7,14}"
+        placeholder="14165551234"
         [(ngModel)]="phoneNumber"
-        aria-describedby="phone-hint"
+        #phoneField="ngModel"
+        [attr.aria-invalid]="fieldState(phoneField) === 'invalid'"
+        aria-describedby="phone-feedback"
+        [class.field-invalid]="fieldState(phoneField) === 'invalid'"
+        [class.field-valid]="fieldState(phoneField) === 'valid'"
       />
-      <p id="phone-hint" class="field-hint">
-        Include your country code, using digits only after +. Your stack information will be sent by
-        text, rather than shown in your account.
+      <p
+        id="phone-feedback"
+        class="field-feedback"
+        [class.invalid]="fieldState(phoneField) === 'invalid'"
+      >
+        @if (fieldState(phoneField) === 'invalid') { Enter 8–15 digits including your country code,
+        such as 14165551234. The + is optional; omit spaces and dashes. } @else { Include your
+        country code, such as 14165551234 for Canada/US. The + is optional. }
       </p>
       }
-      <label for="password">Password</label>
+
+      <label for="password"
+        >Password
+        <span
+          class="field-status"
+          [attr.data-state]="fieldState(passwordField, !registering || passwordFits)"
+          >{{ fieldLabel(passwordField, !registering || passwordFits) }}</span
+        >
+      </label>
       <input
         id="password"
         name="password"
@@ -72,14 +134,46 @@
         [maxlength]="registering ? 64 : 256"
         [pattern]="registering ? passwordPattern : ''"
         [(ngModel)]="password"
-        [attr.aria-describedby]="registering ? 'password-hint' : null"
+        #passwordField="ngModel"
+        [attr.aria-invalid]="fieldState(passwordField, !registering || passwordFits) === 'invalid'"
+        aria-describedby="password-feedback"
+        [class.field-invalid]="fieldState(passwordField, !registering || passwordFits) === 'invalid'"
+        [class.field-valid]="fieldState(passwordField, !registering || passwordFits) === 'valid'"
       />
+      <div id="password-feedback">
+        @if (registering) {
+        <ul class="password-checks" aria-label="Password requirements">
+          @for (check of passwordChecks; track check.label) {
+          <li [class.met]="check.valid">
+            <span aria-hidden="true">{{ check.valid ? '✓' : '○' }}</span>
+            <span
+              >{{ check.label }}<span class="sr-only"
+                >{{ check.valid ? ': met' : ': not met' }}</span
+              ></span
+            >
+          </li>
+          }
+        </ul>
+        @if (!passwordFits) {
+        <p class="field-feedback invalid">
+          This password is too large to save. Use fewer accented characters or emoji.
+        </p>
+        } @if (fieldState(passwordField, passwordFits) === 'invalid') {
+        <p class="field-feedback invalid">
+          Meet each password requirement above before continuing.
+        </p>
+        } } @else if (fieldState(passwordField) === 'invalid') {
+        <p class="field-feedback invalid">Enter your password.</p>
+        }
+      </div>
+
       @if (registering) {
-      <p id="password-hint" class="field-hint">
-        Use 12–64 characters with an uppercase letter, a lowercase letter, a number, and a special
-        character (such as ! or @).
-      </p>
-      <label for="confirm">Confirm password</label>
+      <label for="confirm"
+        >Confirm password
+        <span class="field-status" [attr.data-state]="fieldState(confirmField, passwordsMatch)"
+          >{{ fieldLabel(confirmField, passwordsMatch) }}</span
+        >
+      </label>
       <input
         id="confirm"
         name="passwordConfirmation"
@@ -88,9 +182,28 @@
         required
         maxlength="64"
         [(ngModel)]="passwordConfirmation"
+        #confirmField="ngModel"
+        [attr.aria-invalid]="fieldState(confirmField, passwordsMatch) === 'invalid'"
+        aria-describedby="confirm-feedback"
+        [class.field-invalid]="fieldState(confirmField, passwordsMatch) === 'invalid'"
+        [class.field-valid]="fieldState(confirmField, passwordsMatch) === 'valid'"
       />
+      <p
+        id="confirm-feedback"
+        class="field-feedback"
+        [class.invalid]="fieldState(confirmField, passwordsMatch) === 'invalid'"
+      >
+        @if (fieldState(confirmField, passwordsMatch) === 'invalid') { {{ passwordConfirmation ?
+        'Passwords do not match. Enter the same password in both fields.' : 'Enter your password
+        again to confirm it.' }} } @else if (passwordsMatch) { Passwords match. } @else { Enter the
+        same password again. }
+      </p>
+      } @if (attempted() && (form.invalid || (registering && (!passwordsMatch || !passwordFits)))) {
+      <p class="form-error" role="alert">
+        Check the fields marked “Needs attention” before continuing.
+      </p>
       }
-      <button class="button" type="submit" [disabled]="form.invalid || busy()">
+      <button class="button" type="submit" [disabled]="busy()">
         {{ busy() ? 'Please wait…' : registering ? 'Create account' : 'Log in' }}
       </button>
     </form>

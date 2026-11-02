@@ -36,7 +36,8 @@ class AccountServiceTest {
 
     @Test
     void phoneRequiresCountryCodeAndRejectsInvalidNumbers() {
-        for (String invalid : new String[] {"4165551234", "+0123456789", "+123", "+1416abc1234", ""}) {
+        assertEquals("+14165551234", AccountService.normalizePhone("14165551234"));
+        for (String invalid : new String[] {"123", "+0123456789", "+123", "+1416abc1234", ""}) {
             assertThrows(ResponseStatusException.class,
                     () -> service.register("Member", "member@example.com", "A-long-test-password1!", invalid));
         }

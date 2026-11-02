@@ -66,7 +66,7 @@ class SubscriptionBoundaryTest {
 
     @Test
     void phoneUpdateNormalizesValidNumberAndRejectsInvalidBeforeDatabaseAccess() {
-        assertThrows(ResponseStatusException.class, () -> service.updatePhone("member@example.com", "4165551234"));
+        assertThrows(ResponseStatusException.class, () -> service.updatePhone("member@example.com", "123"));
         verifyNoInteractions(repository, mongo);
         accountWithPhone(null);
         service.updatePhone("member@example.com", "+1 (647) 555-1234");

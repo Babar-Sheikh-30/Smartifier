@@ -1,13 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { MemberStacksComponent } from '../member-stacks/member-stacks';
 
 @Component({
   selector: 'bs-dashboard',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, MemberStacksComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })
@@ -18,16 +19,31 @@ export class DashboardComponent {
   readonly error = signal('');
   readonly saving = signal('');
   readonly notice = signal('');
-  readonly premiumNotice = signal(false);
+  readonly paying = signal(false);
+  private readonly checkoutResult = inject(ActivatedRoute).snapshot.queryParamMap.get('checkout');
+  readonly paymentNotice =
+    this.checkoutResult === 'returned'
+      ? 'You have returned from Stripe checkout. Check your email for your payment receipt.'
+      : this.checkoutResult === 'cancelled'
+        ? 'Checkout was cancelled. You can try again whenever you are ready.'
+        : '';
   phoneNumber = '';
-  readonly stacks = [
-    { id: 'everyday-science', name: 'Everyday science' },
-    { id: 'words-and-language', name: 'Words and language' },
-    { id: 'learning-habits', name: 'Learning habits' }
-  ];
 
-  subscribed(id: string) {
-    return this.auth.user()?.subscriptions.includes(id) ?? false;
+  async payForPremium() {
+    if (this.paying() || this.busy()) return;
+    this.paying.set(true);
+    this.error.set('');
+    try {
+      const url = await this.auth.createCheckout();
+      window.location.assign(url);
+    } catch (error) {
+      this.error.set(
+        error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+          ? error.error.message
+          : 'Could not open Stripe checkout. Please try again.'
+      );
+      this.paying.set(false);
+    }
   }
 
   async savePhone() {
@@ -44,30 +60,6 @@ export class DashboardComponent {
         error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
           ? error.error.message
           : 'Could not save your number. Please try again.'
-      );
-    } finally {
-      this.saving.set('');
-    }
-  }
-
-  async toggleStack(id: string) {
-    if (this.saving() || this.busy()) return;
-    const subscribe = !this.subscribed(id);
-    this.saving.set(id);
-    this.error.set('');
-    this.notice.set('');
-    try {
-      await this.auth.subscribe(id, subscribe);
-      this.notice.set(
-        subscribe
-          ? 'Subscription saved. Text delivery is coming soon.'
-          : 'You have unsubscribed from this stack.'
-      );
-    } catch (error) {
-      this.error.set(
-        error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
-          ? error.error.message
-          : 'Could not save your subscription. Please try again.'
       );
     } finally {
       this.saving.set('');

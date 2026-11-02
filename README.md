@@ -2,7 +2,7 @@
 
 Smartifier delivers bite-sized knowledge by text message. The current application is a responsive landing page with membership information, example knowledge stacks, and an interactive text-message preview.
 
-Members can register and log in, and members/admins have separate protected dashboards. Accounts and stack subscriptions are stored in local MongoDB. Members can subscribe to Everyday science, Words and language, and Learning habits; stack content is not displayed on the member page. Premium payments and SMS delivery are not implemented yet; the premium button currently displays an availability notice.
+Members can register and log in, and members/admins have separate protected dashboards. Accounts, subscriptions, and versioned content stacks are stored in local MongoDB. Free members subscribe to three default stacks. Premium members can also create mixed-content stacks, customize independent copies of defaults, view version history, and submit drafts for approval. The premium button opens hosted Stripe Checkout when configured. SMS delivery is not implemented yet.
 
 ## Requirements
 
@@ -54,11 +54,105 @@ npm.cmd start
 
 Keep Spring Boot running on port 8080, then open http://localhost:4200. Angular reloads the page when you save frontend changes and proxies `/api/**` to Spring Boot. Use one browser origin consistently during a session.
 
+## Stripe payments
+
+To set up a local test payment:
+
+1. Sign in to the [Stripe Dashboard](https://dashboard.stripe.com/) and use the account picker to create or select a **sandbox** (or select **test mode** if available). Stay in this environment for both the key and product setup.
+2. Open **API keys** in that environment and copy the secret key beginning with `sk_test_`. This integration uses the backend secret key; a `pk_test_` publishable key is not needed. Keep the secret key private, including test keys: never put it in this README, commit it, or share it in chat.
+3. Open **Product catalog**, choose **Add product**, and name it `Smartifier Premium`. Add a **One time** price, for example CAD 5.00, and save. This is simulated money in the sandbox. For a recurring membership instead, choose **Recurring** and use `subscription` for the checkout mode below.
+4. Open the saved product's price details and copy its **Price ID**, beginning with `price_`. Use the price ID, not the product ID beginning with `prod_`.
+5. Stop the running backend with Ctrl+C. In PowerShell at the repository root, replace the placeholder values below with your sandbox key and price ID, then restart from that same terminal. These environment variables apply to that terminal and child processes; set them again when using a new terminal.
+
+```powershell
+$env:STRIPE_SECRET_KEY = 'sk_test_your_key'
+$env:STRIPE_PRICE_ID = 'price_your_price_id'
+$env:STRIPE_CHECKOUT_MODE = 'payment'
+$env:SMARTIFIER_PUBLIC_URL = 'http://localhost:8080'
+.\start-local.ps1
+```
+
+Use `payment` for a one-time price or `subscription` for a recurring price. The amount, currency, and billing interval come from the Stripe price; clients cannot supply a price or amount. Use a key and price from the same Stripe account and environment. Keep the secret key on the backend and out of source control. Environment variables must be set in the backend process; this project does not automatically load `.env` files.
+
+Sign in as a member and click **Pay for premium**. The button creates a Checkout Session through the authenticated, CSRF-protected backend, then redirects to Stripe. Stripe returns the member to the dashboard after checkout or cancellation. For Angular development on port 4200, set `SMARTIFIER_PUBLIC_URL` to `http://localhost:4200`; in production, use your public HTTPS origin. Restart the backend after changing configuration. Missing configuration shows an availability message without contacting Stripe.
+
+### Public test card
+
+Stripe publishes this fake Visa card for testing. It is safe to include these details in documentation; they are not a real person's card or an account credential. Use them only with Stripe test keys in a sandbox/test environment. No real money moves.
+
+| Checkout field | Test value |
+| --- | --- |
+| Card number | `4242 4242 4242 4242` |
+| Expiry | `12/34` (or any future date) |
+| CVC | `123` (or any three digits) |
+| Cardholder name | `Test Member` |
+| Postal code | Any valid postal code, such as `M5V 2T6` for Canada |
+
+Open http://localhost:8080, sign in as a member, click **Pay for premium**, and enter these values on the hosted Stripe page. After submitting, check the same Stripe sandbox's payment list for the simulated successful payment. Keep real card details and all secret API keys out of the README and source control. See [Stripe's official test card documentation](https://docs.stripe.com/testing) and [API key documentation](https://docs.stripe.com/keys).
+
+This integration collects payment only: it does not automatically grant or revoke premium access from Stripe. Return URLs are not proof of payment. Before selling premium access, implement verified Stripe webhooks to update membership state, including subscription cancellation and renewal handling. See [Stripe Checkout Session API](https://docs.stripe.com/api/checkout/sessions/create) and [payment fulfillment](https://docs.stripe.com/checkout/fulfillment).
+
+### Stripe in Docker
+
+Docker Compose passes Stripe settings into the backend at runtime. Open the local `.env` file in the repository root and fill in `STRIPE_SECRET_KEY` with your sandbox key (`sk_test_...`) and `STRIPE_PRICE_ID` with the matching sandbox price (`price_...`). Use `payment` for a one-time price or `subscription` for a recurring price. `.env.example` contains the safe template; `.env` is ignored by Git and excluded from the Docker build context. Keep your key private.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d backend
+```
+
+Run that command again after changing `.env` so Compose recreates the backend with the new values. Use `up --build -d` when application code has changed. A bare restart does not reload environment values. The local override avoids a port conflict with a separately installed MongoDB. Docker uses its own database volume, so local MongoDB accounts are separate from Docker accounts.
+
+If **Pay for premium** reports that payments are not configured, the key or price is missing. If checkout cannot open, check that both values belong to the same Stripe sandbox and that the checkout mode matches the price. A public test card alone cannot start checkout; a configured Stripe account is required.
+
+## Free and premium member stacks
+
+Both member tiers can subscribe to the three defaults: Everyday science, Words and language, and Learning habits. Each stack can contain any mixture of `FACT`, `QUOTE`, `JOKE`, and `VOCABULARY` items. Names are starting points, not restrictions on content types. Defaults are seeded with example content on startup, preserving their existing IDs and subscriptions. Restarting never overwrites existing stacks.
+
+Premium members have a personal workspace on the same member dashboard:
+
+- **Create a stack** opens an editor for its name, description, and mixed content items. Each item has a type, body, optional answer/definition/punchline, and optional attribution/source.
+- **Make a personal copy** copies the published default into an independent, privately owned draft. The original remains unchanged. Later changes to the original do not automatically change the copy.
+- **Save draft** always saves a new content version for an existing personal stack. Previous content stays available under **Content and version history**. **Use this version as a draft** lets a member start a new version from an older snapshot.
+- **Submit for approval** marks the saved version `PENDING_REVIEW`. Its content becomes read-only; further edits save another draft version. Submitting never approves or publishes content.
+
+Only the owning premium member can access a personal stack through these APIs. Free members receive default summaries, without their content or personal editing controls. Server-side checks enforce membership, ownership, session authentication, and CSRF protection. New and legacy accounts default to free; registration cannot grant premium access. Conflicting saves return an error instead of overwriting another saved version.
+
+The admin dashboard and approval/rejection controls are intentionally deferred. Submitted versions remain pending until the future review workflow is implemented. Personal drafts are not available for subscription or text delivery yet.
+
+### Preview premium locally
+
+Until Stripe membership webhooks are implemented, use MongoDB Compass to provision a local test member:
+
+1. Register a normal member in the app.
+2. In Compass, connect to your local MongoDB and open the application's `smartifier` database, then the `users` collection (adjust the database name if you configured a different one).
+3. Find that exact account by email. Add or update `premium` to the **Boolean** value `true`, then save. Keep its `role` as `MEMBER`.
+4. Refresh the member dashboard. The personal stack editor should appear. Set `premium` back to Boolean `false` to test free access; saved personal stacks are retained but inaccessible while free.
+
+This is a local testing step, not an automatic result of Stripe payment. Never use a client-side premium switch to grant access.
+
+### MongoDB structure
+
+`users` keeps account data, the trusted `premium` flag, and the existing default subscription IDs. `content_stacks` stores one document per default or personal stack:
+
+| Field | Purpose |
+| --- | --- |
+| `_id` | Stable stack ID |
+| `ownerId` / `defaultStack` | Member ownership or a shared default |
+| `sourceStackId` / `sourceVersion` | The original default and version used for a personal copy |
+| `publishedVersion` | Approved version available for publication; personal drafts start without one |
+| `versions[]` | Numbered content snapshots with name, description, items, status, timestamps, and review note |
+| `versions[].items[]` | Ordered content with `type`, `body`, `answer`, and `attribution` |
+| `revision` | Optimistic locking counter to prevent concurrent updates from losing history |
+
+Versions and items are embedded so each save is atomic without MongoDB multi-document transactions. Limits of 40 versions, 50 items per version, and bounded text fields keep documents below MongoDB's document size limit, including with multilingual content. Content text allows 1,000 characters per body/answer, attribution allows 300, stack names allow 100, and descriptions allow 500. Review status supports `DRAFT`, `PENDING_REVIEW`, `APPROVED`, and `REJECTED`; member endpoints only create drafts and submit them for review.
+
+Member stack APIs are under `/api/member/stacks`: `GET /defaults`, `GET /`, `POST /` to create, `POST /{id}/copy`, `POST /{id}/versions`, and `POST /{id}/submit`. Save and submit requests include `expectedRevision` from the last loaded stack. Content type rules, default names, and review workflows can be extended later.
+
 ## Local accounts
 
 The default MongoDB connection is `mongodb://localhost:27017/smartifier`. Accounts live in the `users` collection. Override the connection with `MONGODB_URI` if needed. Compass can connect to `mongodb://localhost:27017` to inspect the data.
 
-Open `/register` to create a member with name, email, mobile number including country code (such as `+14165551234`), password, and confirmation. Registration redirects to `/login`. Members and admins share the same login page and are directed to `/member/dashboard` and `/admin/dashboard`, respectively. Each dashboard displays the account information and a logout button. Members can update their mobile number and subscribe or unsubscribe from the three free stacks. Existing accounts without a mobile number must add one before subscribing.
+Open `/register` to create a member with name, email, mobile number including country code (such as `14165551234`), password, and confirmation. The leading `+` is optional in registration and the dashboard; the backend adds it when storing the number. For Canada/US, include the `1` before the ten-digit number. Registration redirects to `/login`. Members and admins share the same login page and are directed to `/member/dashboard` and `/admin/dashboard`, respectively. Each dashboard displays the account information and a logout button. Members can update their mobile number and subscribe or unsubscribe from the three free stacks. Premium members also have the personal stack workspace described above. Existing accounts without a mobile number must add one before subscribing.
 
 The backend stores BCrypt password hashes and creates a unique index on normalized emails. Registration always assigns `MEMBER`, even if a client supplies an admin role. Resolve any pre-existing duplicate emails before startup so the index can be created.
 
@@ -86,7 +180,7 @@ java -jar target/smartifier-0.0.1-SNAPSHOT.jar
 
 Use `npm.cmd run format` to apply Prettier formatting. Generated files in `frontend/dist/` and `target/` are ignored by Git.
 
-MongoDB integration tests use a uniquely named `smartifier_auth_test_*` database and remove it afterward. They do not use the application's `smartifier` database.
+MongoDB integration tests use uniquely named `smartifier_auth_test_*` and `smartifier_stacks_test_*` databases and remove them afterward. They do not use the application's `smartifier` database. Stack tests cover seeding, persistence, premium restrictions, CSRF, independent copies, ownership, stale edits, and approval submission.
 
 ## Project layout
 

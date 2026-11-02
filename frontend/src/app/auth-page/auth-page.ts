@@ -1,5 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, ElementRef, inject, signal } from '@angular/core';
+import { FormsModule, NgForm, NgModel } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
@@ -14,9 +14,11 @@ import { AuthService } from '../auth.service';
 export class AuthPageComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly route = inject(ActivatedRoute);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly attempted = signal(false);
   name = '';
   email = '';
   phoneNumber = '';
@@ -29,11 +31,48 @@ export class AuthPageComponent {
     return this.route.snapshot.data['register'] === true;
   }
 
-  async submit() {
+  get passwordsMatch() {
+    return this.passwordConfirmation.length > 0 && this.password === this.passwordConfirmation;
+  }
+
+  get passwordFits() {
+    return new TextEncoder().encode(this.password).length <= 72;
+  }
+
+  get passwordChecks() {
+    return [
+      {
+        label: '12–64 characters',
+        valid: this.password.length >= 12 && this.password.length <= 64
+      },
+      { label: 'An uppercase letter (A–Z)', valid: /[A-Z]/.test(this.password) },
+      { label: 'A lowercase letter (a–z)', valid: /[a-z]/.test(this.password) },
+      { label: 'A number (0–9)', valid: /[0-9]/.test(this.password) },
+      { label: 'A special character, such as ! or @', valid: /[^A-Za-z0-9\s]/.test(this.password) }
+    ];
+  }
+
+  fieldState(field: NgModel, extraValid = true): 'required' | 'valid' | 'invalid' {
+    if (field.pristine && !field.touched && !this.attempted()) return 'required';
+    return field.valid && extraValid ? 'valid' : 'invalid';
+  }
+
+  fieldLabel(field: NgModel, extraValid = true) {
+    const state = this.fieldState(field, extraValid);
+    return state === 'valid' ? '✓ Valid' : state === 'invalid' ? 'Needs attention' : 'Required';
+  }
+
+  async submit(form: NgForm) {
     if (this.busy()) return;
     this.error.set('');
-    if (this.registering && this.password !== this.passwordConfirmation) {
-      this.error.set('Passwords do not match.');
+    this.attempted.set(true);
+    form.form.markAllAsTouched();
+    if (form.invalid || (this.registering && (!this.passwordsMatch || !this.passwordFits))) {
+      window.setTimeout(() =>
+        this.element.nativeElement
+          .querySelector<HTMLInputElement>('input[aria-invalid="true"]')
+          ?.focus()
+      );
       return;
     }
     this.busy.set(true);
