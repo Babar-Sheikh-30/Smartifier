@@ -13,6 +13,7 @@ public class MemberController {
     private final AccountService accounts;
     public MemberController(AccountService accounts) { this.accounts = accounts; }
 
+    // Boolean allows validation to reject an omitted choice instead of treating it as false.
     public record Subscription(@NotBlank String stack, @NotNull Boolean subscribed) {}
     public record Phone(@NotBlank String phoneNumber) {}
 

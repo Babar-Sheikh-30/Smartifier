@@ -7,6 +7,7 @@ import { AuthPageComponent } from './auth-page/auth-page';
 import { DashboardComponent } from './dashboard/dashboard';
 
 const signedIn: CanActivateFn = async (route) => {
+  // Refresh the session before showing a dashboard. The backend also enforces role access.
   const auth = inject(AuthService);
   const router = inject(Router);
   try {

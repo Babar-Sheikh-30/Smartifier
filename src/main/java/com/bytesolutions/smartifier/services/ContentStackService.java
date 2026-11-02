@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/** Manages published default stacks and versioned personal stacks for premium members. */
 @Service
 public class ContentStackService {
     private final AccountService accounts;
@@ -25,6 +26,7 @@ public class ContentStackService {
     public record Summary(String id, String name, String description, int itemCount) {}
 
     public List<Summary> defaults() {
+        // Show the approved published version, even when a newer draft exists.
         return stacks.findByDefaultStackTrue().stream()
                 .filter(stack -> stack.publishedVersion() != null)
                 .map(stack -> {
@@ -36,6 +38,7 @@ public class ContentStackService {
     }
 
     private Account premium(String email) {
+        // Personal stacks are a member benefit; an admin role alone does not grant access.
         var account = accounts.current(email);
         if (account.role() != Account.Role.MEMBER || !account.premium()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Premium membership is required to manage personal stacks.");
@@ -51,6 +54,7 @@ public class ContentStackService {
 
     public ContentStack create(String email, Edit edit) {
         var owner = premium(email);
+        // A new personal stack has no copy source or published version; MongoDB assigns its revision.
         return stacks.insert(new ContentStack(null, owner.id(), false, null, null, null,
                 List.of(draft(1, edit)), null));
     }
@@ -64,6 +68,7 @@ public class ContentStackService {
                 .filter(v -> v.number() == source.publishedVersion() && v.status() == Status.APPROVED)
                 .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Published version not found."));
         var name = version.name();
+        // Leave room for the copy suffix within the stack name length limit.
         var edit = new Edit(name.substring(0, Math.min(name.length(), 90)) + " (my copy)",
                 version.description(), version.items(), 0);
         return stacks.insert(new ContentStack(null, owner.id(), false, source.id(), version.number(), null,
@@ -74,6 +79,7 @@ public class ContentStackService {
         var owner = premium(email);
         var stack = stacks.findByIdAndOwnerId(id, owner.id()).filter(s -> !s.defaultStack())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Personal stack not found."));
+        // Reject edits based on stale client data before attempting to save.
         if (stack.revision() == null || stack.revision() != expectedRevision) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before saving.");
         }
@@ -86,6 +92,7 @@ public class ContentStackService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has reached its 40-version limit.");
         }
         var versions = new ArrayList<>(stack.versions());
+        // Preserve earlier versions so each save retains the stack's history.
         versions.add(draft(stack.latest().number() + 1, edit));
         return persist(stack, versions);
     }
@@ -97,6 +104,7 @@ public class ContentStackService {
         }
         var versions = new ArrayList<>(stack.versions());
         var latest = stack.latest();
+        // Submission changes the saved draft's status without creating another content version.
         versions.set(versions.size() - 1, new Revision(latest.number(), latest.name(), latest.description(),
                 latest.items(), Status.PENDING_REVIEW, latest.createdAt(), Instant.now(), null));
         return persist(stack, versions);
@@ -112,6 +120,7 @@ public class ContentStackService {
             return stacks.save(new ContentStack(stack.id(), stack.ownerId(), false, stack.sourceStackId(),
                     stack.sourceVersion(), stack.publishedVersion(), versions, stack.revision()));
         } catch (OptimisticLockingFailureException exception) {
+            // Another request may have saved after the initial revision check.
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before saving.");
         }
     }

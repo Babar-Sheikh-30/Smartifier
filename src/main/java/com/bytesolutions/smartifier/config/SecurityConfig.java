@@ -11,11 +11,13 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder() {
+        // Store the encoder identifier with each hash so password formats can evolve later.
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Stripe has no browser session or CSRF token; its webhook uses signature verification.
         http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/payments/stripe/webhook"))
             .authorizeHttpRequests(access -> access
                 .requestMatchers("/", "/login", "/register", "/app/**", "/favicon.ico", "/error",
@@ -39,6 +41,7 @@ public class SecurityConfig {
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((request, response, exception) -> {
                     if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")) {
+                        // API callers need a status code; browser page requests need the login page.
                         response.setStatus(401);
                         response.setContentType("application/json");
                         response.getWriter().write("{\"message\":\"Please sign in.\"}");

@@ -54,6 +54,7 @@ try {
     & .\mvnw.cmd spring-boot:run
     if ($LASTEXITCODE -ne 0) { throw 'Application startup failed. See the Maven output above.' }
 } finally {
+    # Keep setup credentials and the selected JDK from leaking into later shell commands.
     $env:SMARTIFIER_ADMIN_EMAIL = $previousAdminEmail
     $env:SMARTIFIER_ADMIN_PASSWORD = $previousAdminPassword
     $env:JAVA_HOME = $previousJavaHome

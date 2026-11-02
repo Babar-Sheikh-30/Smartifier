@@ -11,11 +11,14 @@ public record Account(@Id String id, String name, String email, String passwordH
                       Role role, @CreatedDate Instant createdAt, String phoneNumber, Set<String> subscriptions,
                       Boolean premium) {
     public Account {
+        // Older accounts may lack these fields: start with no subscriptions and no paid access.
+        // Copy the set so callers cannot change an account's subscriptions in memory.
         subscriptions = subscriptions == null ? Set.of() : Set.copyOf(subscriptions);
         premium = Boolean.TRUE.equals(premium);
     }
     public Account(String id, String name, String email, String passwordHash, Role role, Instant createdAt,
                    String phoneNumber, Set<String> subscriptions) {
+        // New accounts stay on the free tier until a verified payment activates premium.
         this(id, name, email, passwordHash, role, createdAt, phoneNumber, subscriptions, false);
     }
     // Admins do not need a phone number. This constructor also supports legacy members

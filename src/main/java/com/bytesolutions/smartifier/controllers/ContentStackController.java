@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public class ContentStackController {
     private final ContentStackService stacks;
     public ContentStackController(ContentStackService stacks) { this.stacks = stacks; }
+    // The client sends the revision it last loaded so stale submissions can be rejected.
     public record Submission(@PositiveOrZero long expectedRevision) {}
 
     @GetMapping("/defaults")

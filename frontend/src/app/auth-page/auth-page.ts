@@ -36,6 +36,7 @@ export class AuthPageComponent {
   }
 
   get passwordFits() {
+    // Match the backend's BCrypt byte limit, including passwords with Unicode characters.
     return new TextEncoder().encode(this.password).length <= 72;
   }
 
@@ -53,6 +54,7 @@ export class AuthPageComponent {
   }
 
   fieldState(field: NgModel, extraValid = true): 'required' | 'valid' | 'invalid' {
+    // Avoid showing an error before the user interacts with a field or submits the form.
     if (field.pristine && !field.touched && !this.attempted()) return 'required';
     return field.valid && extraValid ? 'valid' : 'invalid';
   }
@@ -68,6 +70,7 @@ export class AuthPageComponent {
     this.attempted.set(true);
     form.form.markAllAsTouched();
     if (form.invalid || (this.registering && (!this.passwordsMatch || !this.passwordFits))) {
+      // Let Angular render validation attributes before focusing the first invalid input.
       window.setTimeout(() =>
         this.element.nativeElement
           .querySelector<HTMLInputElement>('input[aria-invalid="true"]')

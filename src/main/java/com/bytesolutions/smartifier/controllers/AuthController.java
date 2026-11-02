@@ -33,6 +33,7 @@ public class AuthController {
                                @NotBlank @Size(min = 12, max = 64) String password,
                                @NotBlank String passwordConfirmation) {}
 
+    // Expose account details needed by the UI without returning the stored password hash.
     public record Profile(String id, String name, String email, Account.Role role, Instant createdAt,
                           String phoneNumber, Set<String> subscriptions, boolean premium) {
         public static Profile from(Account account) {

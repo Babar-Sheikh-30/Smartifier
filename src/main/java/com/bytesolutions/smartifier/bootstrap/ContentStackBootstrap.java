@@ -31,6 +31,7 @@ public class ContentStackBootstrap implements ApplicationRunner {
     }
 
     private void seed(String id, String name, String description, List<Item> items) {
+        // Built-in stacks are shared, so they have no owner and begin with an approved version.
         // Insert only: restarting never overwrites a default's content or version history.
         mongo.upsert(Query.query(Criteria.where("id").is(id)), new Update()
                 .setOnInsert("defaultStack", true).setOnInsert("ownerId", null)

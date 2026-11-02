@@ -43,8 +43,10 @@ public class StripeCheckoutService {
         form.add("line_items[0][price]", priceId);
         form.add("line_items[0][quantity]", "1");
         form.add("customer_email", email);
+        // Server-selected account and price values let the webhook identify the paid membership.
         form.add("client_reference_id", email);
         form.add("metadata[smartifier_price_id]", priceId);
+        // Returning to this URL is only a UI notice; the verified webhook grants premium.
         form.add("success_url", baseUrl + "/member/dashboard?checkout=returned");
         form.add("cancel_url", baseUrl + "/member/dashboard?checkout=cancelled");
         try {
@@ -54,6 +56,7 @@ public class StripeCheckoutService {
                     .body(form).retrieve().body(Checkout.class);
             if (checkout != null && checkout.url() != null) {
                 var url = URI.create(checkout.url());
+                // Only redirect members to Stripe's hosted checkout over HTTPS.
                 if ("https".equals(url.getScheme()) && "checkout.stripe.com".equals(url.getHost())
                         && url.getRawUserInfo() == null && url.getPort() == -1) {
                     return checkout;

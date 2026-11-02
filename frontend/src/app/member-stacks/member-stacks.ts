@@ -47,11 +47,13 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async load() {
+    // Keep a refresh from replacing data while the member is editing or saving.
     if (this.busy() || this.editorOpen()) return;
     this.loading.set(true);
     this.error.set('');
     try {
       const [defaults, personal] = await Promise.all([
+        // Free members can browse defaults; personal stacks require premium access.
         this.api.defaults(),
         this.auth.user()?.premium ? this.api.personal() : Promise.resolve([])
       ]);
@@ -114,6 +116,7 @@ export class MemberStacksComponent implements OnInit {
     this.editing.set(stack);
     this.name = content?.name ?? '';
     this.description = content?.description ?? '';
+    // Edit copies so cancelling cannot change the saved version shown elsewhere.
     this.items = content ? content.items.map((item) => ({ ...item })) : [this.emptyItem()];
     this.editorOpen.set(true);
     this.error.set('');
@@ -130,6 +133,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   emptyItem(): ContentItem {
+    // Start with a fact; answers and attribution stay empty until the content needs them.
     return { type: 'FACT', body: '', answer: '', attribution: '' };
   }
 
@@ -179,6 +183,7 @@ export class MemberStacksComponent implements OnInit {
         name: this.name.trim(),
         description: this.description.trim(),
         items: this.items.map((item) => ({ ...item, body: item.body.trim() })),
+        // New stacks have no saved revision; existing stacks must match the loaded revision.
         expectedRevision: stack?.revision ?? 0
       };
       const saved = await (stack ? this.api.save(stack, edit) : this.api.create(edit));

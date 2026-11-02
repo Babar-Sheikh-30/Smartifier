@@ -8,6 +8,7 @@ export interface Profile {
   email: string;
   role: 'MEMBER' | 'ADMIN';
   createdAt: string;
+  // Admins and older member accounts may not have a messaging number.
   phoneNumber: string | null;
   subscriptions: string[];
   premium: boolean;
@@ -16,6 +17,7 @@ export interface Profile {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  // No profile is assumed until the server confirms the current session.
   readonly user = signal<Profile | null>(null);
 
   async loadUser(): Promise<Profile> {
@@ -87,6 +89,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<Profile> {
+    // Spring Security's form login expects URL-encoded fields rather than JSON.
     const body = new URLSearchParams({ email, password }).toString();
     await firstValueFrom(
       this.http.post('/api/auth/login', body, {

@@ -7,6 +7,7 @@ import { Component, signal } from '@angular/core';
   styleUrl: './landing.scss'
 })
 export class LandingComponent {
+  // These are preview messages for visitors, separate from the saved stack catalog.
   readonly stacks = [
     {
       name: 'Everyday science',

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
+/** Verifies Stripe webhook signatures and activates premium access for paid checkouts. */
 @Service
 public class StripeWebhookService {
     private final MongoTemplate mongo;
@@ -37,6 +38,7 @@ public class StripeWebhookService {
         if (secret.isBlank() || priceId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Webhook is not configured.");
         }
+        // Verify the original bytes before parsing; reserialized JSON can change the signature.
         verify(body, signature);
         final tools.jackson.databind.JsonNode event;
         try {
@@ -48,11 +50,12 @@ public class StripeWebhookService {
         if (!type.equals("checkout.session.completed")
                 && !type.equals("checkout.session.async_payment_succeeded")) return;
         var session = event.path("data").path("object");
+        // Delayed payment methods may complete checkout before payment succeeds.
         if (!session.path("payment_status").asText().equals("paid")
                 || !session.path("metadata").path("smartifier_price_id").asText().equals(priceId)) return;
         String email = session.path("client_reference_id").asText();
         if (email.isBlank()) return;
-        // Atomic and idempotent: retries cannot overwrite subscriptions or other account edits.
+        // Setting only premium makes retries harmless and preserves other account fields.
         var result = mongo.updateFirst(Query.query(Criteria.where("email").is(email)
                         .and("role").is(Account.Role.MEMBER)),
                 new Update().set("premium", true), Account.class);
@@ -70,11 +73,14 @@ public class StripeWebhookService {
             }
             long sent = Long.parseLong(timestamp);
             long now = Instant.now().getEpochSecond();
+            // Limit replay of captured requests to a five-minute timestamp window.
             if (sent < now - 300 || sent > now + 300) throw new IllegalArgumentException();
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            // Stripe signs the timestamp, a period, and the unmodified request body.
             mac.update((timestamp + ".").getBytes(StandardCharsets.UTF_8));
             byte[] expected = mac.doFinal(body);
+            // Accept any matching v1 signature to support signing secret rotation.
             for (String part : signature.split(",")) {
                 part = part.trim();
                 if (part.startsWith("v1=") && MessageDigest.isEqual(expected,

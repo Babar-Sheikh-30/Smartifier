@@ -47,6 +47,7 @@ public class AccountBootstrap implements ApplicationRunner {
             throw new IllegalStateException("SMARTIFIER_ADMIN_EMAIL must be a valid email address.");
         }
         var existing = accounts.findByEmail(normalized);
+        // Startup must not promote a member or reset an existing admin's password.
         if (existing.isPresent()) {
             if (existing.get().role() != Role.ADMIN) {
                 throw new IllegalStateException("The configured admin email belongs to a member. Use another email.");

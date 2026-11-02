@@ -31,10 +31,12 @@ public class AccountService implements UserDetailsService {
     }
 
     public static String normalizeEmail(String email) {
+        // Registration and login use the same key regardless of casing or surrounding spaces.
         return email.strip().toLowerCase(Locale.ROOT);
     }
 
     public static void validatePassword(String password) {
+        // BCrypt limits input to 72 bytes; Unicode characters can use more than one byte.
         if (password == null || password.length() < 12 || password.length() > 64
                 || password.getBytes(StandardCharsets.UTF_8).length > 72
                 || !password.matches("(?s).*[A-Z].*")
@@ -51,6 +53,7 @@ public class AccountService implements UserDetailsService {
                 || !phoneNumber.matches("[+0-9() .-]+")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a mobile number with country code, such as +14165551234.");
         }
+        // Accept common display formatting, but store one international form for messaging.
         String normalized = phoneNumber.replaceAll("[() .-]", "");
         if (!normalized.startsWith("+")) normalized = "+" + normalized;
         if (!normalized.matches("\\+[1-9][0-9]{7,14}")) {
@@ -79,6 +82,8 @@ public class AccountService implements UserDetailsService {
         }
         Account account = current(email);
         boolean defaultStack = Set.of("everyday-science", "words-and-language", "learning-habits").contains(stack);
+        // Personal stacks must belong to this member. Unsubscribing remains possible
+        // without premium so a member can always stop an existing subscription.
         if (!defaultStack && !(account.role() == Role.MEMBER && (!subscribed || account.premium())
                 && mongo.exists(org.springframework.data.mongodb.core.query.Query.query(
                         org.springframework.data.mongodb.core.query.Criteria.where("id").is(stack)
@@ -101,6 +106,7 @@ public class AccountService implements UserDetailsService {
     public Account updatePhone(String email, String phoneNumber) {
         String phone = normalizePhone(phoneNumber);
         Account account = current(email);
+        // Change only the phone field to preserve concurrent payment and subscription updates.
         mongo.updateFirst(org.springframework.data.mongodb.core.query.Query.query(
                 org.springframework.data.mongodb.core.query.Criteria.where("id").is(account.id())),
                 new org.springframework.data.mongodb.core.query.Update().set("phoneNumber", phone), Account.class);

@@ -26,6 +26,7 @@ services:
       - mongo
 
   stripe-listener:
+    # Start only with the stripe profile when forwarding local test webhook events.
     image: stripe/stripe-cli:latest
     profiles: [stripe]
     environment:

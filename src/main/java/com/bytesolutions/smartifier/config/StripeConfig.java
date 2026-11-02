@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 public class StripeConfig {
     @Bean
     RestClient.Builder stripeRestClientBuilder() {
+        // Bound connection and response waits so a slow payment provider cannot hang checkout.
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10)).build());
         factory.setReadTimeout(Duration.ofSeconds(20));

@@ -22,6 +22,7 @@ export class DashboardComponent {
   readonly paying = signal(false);
   private readonly checkoutResult = inject(ActivatedRoute).snapshot.queryParamMap.get('checkout');
   readonly paymentNotice =
+    // A checkout return does not prove payment; the server waits for Stripe's webhook.
     this.checkoutResult === 'returned'
       ? 'Your payment is being confirmed. If premium is not active yet, refresh this page in a few seconds.'
       : this.checkoutResult === 'cancelled'

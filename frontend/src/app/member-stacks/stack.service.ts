@@ -21,8 +21,10 @@ export interface StackVersion {
 }
 export interface PersonalStack {
   id: string;
+  // Only copies have a source; stacks created from scratch leave both source fields null.
   sourceStackId: string | null;
   sourceVersion: number | null;
+  // Database concurrency counter, separate from the content version number.
   revision: number;
   versions: StackVersion[];
 }
