@@ -19,11 +19,10 @@ public class AdminContentController {
     public record MetadataEdit(@NotBlank @Size(max = 100) String name, @Size(max = 500) String description,
             @NotNull @PositiveOrZero Long expectedRevision) {}
     public record Change(@NotNull @PositiveOrZero Long expectedRevision) {}
-    public record ContentEdit(@NotBlank @Size(max = 100) String title, @Size(max = 500) String description,
-            @NotNull Type type, @NotBlank @Size(max = 1000) String body,
+    public record ContentEdit(@NotNull Type type, @NotBlank @Size(max = 1000) String body,
             @Size(max = 1000) String answer, @Size(max = 300) String attribution,
             @NotNull @PositiveOrZero Long expectedRevision) {
-        Item item() { return new Item(type, body, answer, attribution, null, title, description); }
+        Item item() { return new Item(type, body, answer, attribution); }
     }
 
     @GetMapping public List<ContentStack> list() { return service.list(); }

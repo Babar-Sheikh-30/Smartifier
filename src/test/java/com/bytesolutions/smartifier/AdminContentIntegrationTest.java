@@ -59,6 +59,60 @@ class AdminContentIntegrationTest {
     }
     private Document latest(Document stack) { return stack.getList("versions", Document.class).getLast(); }
 
+    @Test void premiumSubmissionsCanBeReviewedWithoutChangingNewerDraftsOrSharingPrivateStacks() throws Exception {
+        String reviewBase = "/api/admin/reviews";
+        var admin = browser();
+        assertEquals(401, get(admin, reviewBase).statusCode());
+        assertEquals(204, post(admin, "/api/auth/login", "email=admin@example.test&password=" + PASSWORD, true).statusCode());
+        var member = browser();
+        var registration = new Document("name", "Review Member").append("email", "review-member@example.test")
+                .append("password", PASSWORD).append("passwordConfirmation", PASSWORD).append("phoneNumber", "+14165551234");
+        assertEquals(201, post(member, "/api/auth/register", registration.toJson(), true).statusCode());
+        assertEquals(204, post(member, "/api/auth/login", "email=review-member@example.test&password=" + PASSWORD, true).statusCode());
+        assertEquals(403, get(member, reviewBase).statusCode());
+        var edit = new Document("name", "Review this stack").append("description", "Submitted description")
+                .append("items", List.of(new Document("type", "FACT").append("body", "Original submitted content")))
+                .append("expectedRevision", 0);
+        assertEquals(403, post(member, "/api/member/stacks", edit.toJson(), true).statusCode());
+        try (var mongo = MongoClients.create(MONGO)) {
+            mongo.getDatabase(DATABASE).getCollection("users").updateOne(new Document("email", "review-member@example.test"),
+                    new Document("$set", new Document("premium", true)));
+        }
+        var stack = ok(post(member, "/api/member/stacks", edit.toJson(), true), 200);
+        String memberPath = "/api/member/stacks/" + stack.getString("id");
+        stack = ok(post(member, memberPath + "/submit", revision(stack), true), 200);
+        edit.put("name", "Newer private draft");
+        edit.put("expectedRevision", stack.get("revision"));
+        stack = ok(post(member, memberPath + "/versions", edit.toJson(), true), 200);
+        var queue = Document.parse("{\"entries\":" + get(admin, reviewBase).body() + "}").getList("entries", Document.class);
+        assertEquals(1, queue.size());
+        var entry = queue.getFirst();
+        assertEquals("Review this stack", entry.get("version", Document.class).getString("name"));
+        String decisionPath = reviewBase + "/" + stack.getString("id") + "/versions/1/decision";
+        var decision = new Document("expectedRevision", entry.get("revision")).append("approved", true).append("note", "Great work.");
+        assertEquals(403, post(member, decisionPath, decision.toJson(), true).statusCode());
+        assertEquals(403, post(admin, decisionPath, decision.toJson(), false).statusCode());
+        assertEquals(400, post(admin, decisionPath, "{}", true).statusCode());
+        assertEquals(204, post(admin, decisionPath, decision.toJson(), true).statusCode());
+        assertEquals("[]", get(admin, reviewBase).body());
+        assertEquals(409, post(admin, decisionPath, decision.toJson(), true).statusCode());
+        var personal = Document.parse("{\"stacks\":" + get(member, "/api/member/stacks").body() + "}").getList("stacks", Document.class).getFirst();
+        var reviewed = personal.getList("versions", Document.class).getFirst();
+        assertEquals("APPROVED", reviewed.getString("status"));
+        assertEquals("Great work.", reviewed.getString("reviewNote"));
+        assertEquals("DRAFT", latest(personal).getString("status"));
+        assertNull(personal.get("publishedVersion"));
+        assertFalse(get(member, "/api/member/stacks/defaults").body().contains("Review this stack"));
+        personal = ok(post(member, memberPath + "/submit", revision(personal), true), 200);
+        var denied = new Document("expectedRevision", personal.get("revision")).append("approved", false).append("note", "Please add sources.");
+        var emptyDenial = new Document("expectedRevision", personal.get("revision")).append("approved", false).append("note", " ");
+        assertEquals(400, post(admin, reviewBase + "/" + stack.getString("id") + "/versions/2/decision", emptyDenial.toJson(), true).statusCode());
+        assertEquals(204, post(admin, reviewBase + "/" + stack.getString("id") + "/versions/2/decision", denied.toJson(), true).statusCode());
+        assertEquals("[]", get(admin, reviewBase).body());
+        assertTrue(get(member, "/api/member/stacks").body().contains("Please add sources."));
+        assertTrue(get(member, "/api/member/stacks").body().contains("REJECTED"));
+    }
+
     @Test void adminLifecycleIntegratesWithMemberCatalogSubscriptionsCopiesAndArchival() throws Exception {
         String base = "/api/admin/stacks";
         var admin = browser();
@@ -72,7 +126,7 @@ class AdminContentIntegrationTest {
         String path = base + "/" + stack.getString("id");
         assertEquals(404, get(admin, base + "/missing").statusCode());
         assertEquals(400, post(admin, path + "/remove", "{}", true).statusCode());
-        assertEquals(400, post(admin, path + "/content", content(stack, " ", "Fact").toJson(), true).statusCode());
+        assertEquals(400, post(admin, path + "/content", content(stack, "Fact", " ").toJson(), true).statusCode());
         stack = ok(post(admin, path + "/content", content(stack, "First", "Public fact").toJson(), true), 201);
         String first = latest(stack).getList("items", Document.class).getFirst().getString("id");
         stack = ok(post(admin, path + "/content", content(stack, "Second", "Private draft").toJson(), true), 201);

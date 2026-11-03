@@ -139,7 +139,7 @@ public class AdminContentService {
 
     private Item clean(Item item, String id) {
         return new Item(item.type(), item.body().strip(), text(item.answer()), text(item.attribution()),
-                id, item.title().strip(), text(item.description()));
+                id, null, null);
     }
 
     private String text(String value) { return value == null ? "" : value.strip(); }

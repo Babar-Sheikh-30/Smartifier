@@ -20,7 +20,7 @@
   </div>
   @if (loading()) {
   <p role="status">Loading stacks...</p>
-  } @if (error()) {
+  } @if (error() && !editing()) {
   <p class="form-error" role="alert">{{ error() }}</p>
   } @if (notice()) {
   <p class="form-success" role="status">{{ notice() }}</p>
@@ -51,6 +51,11 @@
   >
     <fieldset [disabled]="locked()">
       <legend>{{ selected() ? 'Edit stack details' : 'Create stack' }}</legend>
+      @if (error()) {
+      <p id="admin-stack-editor-error" class="form-error editor-error" role="alert" tabindex="-1">
+        {{ error() }}
+      </p>
+      }
       <label for="admin-stack-name">Name</label>
       <input
         id="admin-stack-name"
@@ -134,23 +139,11 @@
   >
     <fieldset [disabled]="locked()">
       <legend>{{ itemId ? 'Edit content' : 'Create content' }}</legend>
-      <label for="admin-content-title-input">Title</label>
-      <input
-        id="admin-content-title-input"
-        name="title"
-        [(ngModel)]="item.title"
-        required
-        maxlength="100"
-        pattern=".*\S.*"
-      />
-      <label for="admin-content-description">Description (optional)</label>
-      <textarea
-        id="admin-content-description"
-        name="description"
-        [(ngModel)]="item.description"
-        maxlength="500"
-        rows="2"
-      ></textarea>
+      @if (error()) {
+      <p id="admin-content-editor-error" class="form-error editor-error" role="alert" tabindex="-1">
+        {{ error() }}
+      </p>
+      }
       <label for="admin-content-type">Type</label>
       <select id="admin-content-type" name="type" [(ngModel)]="item.type" required>
         @for (type of types; track type) {
@@ -196,11 +189,12 @@
   <p>No content in this stack. Add content and publish it when ready.</p>
   } @for (content of items(stack); track content.id) {
   <article class="stack-card">
-    <h3>{{ content.title || 'Untitled ' + content.type.toLowerCase() }}</h3>
-    <p class="field-hint">{{ content.type }} · {{ status(stack, content) }}</p>
-    @if (content.description) {
-    <p>{{ content.description }}</p>
-    }
+    <div class="content-meta">
+      <span class="type-pill">{{ content.type }}</span
+      ><span class="status-pill" [class.is-published]="status(stack, content) === 'Published'"
+        >{{ status(stack, content) }}</span
+      >
+    </div>
     <p class="content-text">{{ content.body }}</p>
     @if (content.answer) {
     <p class="content-text">{{ content.answer }}</p>

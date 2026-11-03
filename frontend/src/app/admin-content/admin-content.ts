@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, afterNextRender, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminContentService, AdminItem, AdminStack } from './admin-content.service';
@@ -13,6 +14,8 @@ import { ContentItem } from '../member-stacks/stack.service';
 })
 export class AdminContentComponent implements OnInit {
   private readonly api = inject(AdminContentService);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   readonly stacks = signal<AdminStack[]>([]);
   readonly selected = signal<AdminStack | null>(null);
   readonly loading = signal(false);
@@ -43,7 +46,7 @@ export class AdminContentComponent implements OnInit {
   status(stack: AdminStack, item: AdminItem) {
     const live = this.published(stack).find((i) => i.id === item.id);
     if (!live) return 'Draft';
-    return ['title', 'description', 'type', 'body', 'answer', 'attribution'].every(
+    return ['type', 'body', 'answer', 'attribution'].every(
       (key) => (live[key as keyof ContentItem] ?? '') === (item[key as keyof ContentItem] ?? '')
     )
       ? 'Published'
@@ -64,10 +67,24 @@ export class AdminContentComponent implements OnInit {
   }
 
   private report(error: unknown) {
-    this.error.set(
+    this.showError(
       error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
         ? error.error.message
         : 'Could not complete the request. Please try again.'
+    );
+  }
+  private showError(message: string) {
+    this.error.set(message);
+    if (!this.editing()) return;
+    afterNextRender(
+      () => {
+        const element = this.document.getElementById(
+          this.itemEditor() ? 'admin-content-editor-error' : 'admin-stack-editor-error'
+        );
+        element?.focus({ preventScroll: true });
+        element?.scrollIntoView?.({ block: 'center', behavior: 'auto' });
+      },
+      { injector: this.injector }
     );
   }
   async load() {
@@ -103,13 +120,13 @@ export class AdminContentComponent implements OnInit {
     if (this.locked() || this.editing() || this.confirmation()) return;
     this.itemId = item?.id ?? null;
     this.item = item
-      ? { ...item, title: item.title ?? '', description: item.description ?? '' }
+      ? { type: item.type, body: item.body, answer: item.answer, attribution: item.attribution }
       : this.emptyItem();
     this.itemEditor.set(true);
     this.error.set('');
   }
   private emptyItem(): ContentItem {
-    return { title: '', description: '', type: 'FACT', body: '', answer: '', attribution: '' };
+    return { type: 'FACT', body: '', answer: '', attribution: '' };
   }
   cancel() {
     if (this.locked()) return;
@@ -136,7 +153,7 @@ export class AdminContentComponent implements OnInit {
   }
   async saveStack(valid: boolean) {
     if (!valid || !this.stackName.trim()) {
-      this.error.set('Enter a stack name and check the field limits.');
+      this.showError('Enter a stack name and check the field limits.');
       return;
     }
     await this.action(async () => {
@@ -155,8 +172,8 @@ export class AdminContentComponent implements OnInit {
     });
   }
   async saveItem(valid: boolean) {
-    if (!valid || !this.item.title?.trim() || !this.item.body.trim()) {
-      this.error.set('Enter a content title and body, and check the field limits.');
+    if (!valid || !this.item.body.trim()) {
+      this.showError('Enter a content body and check the field limits.');
       return;
     }
     const stack = this.selected();

@@ -19,6 +19,15 @@ class AdminContentServiceTest {
     private ContentStack stored;
     private Item content(String id, String body) { return new Item(Type.FACT, body, "", "", id, "Title", "Description"); }
 
+    @Test void contentCanBeCreatedAndEditedWithoutTitlesOrDescriptions() {
+        service.add("shared", 0, new Item(Type.FACT, "Body only", "", ""));
+        var item = stored.latest().items().getFirst();
+        assertNull(item.title());
+        assertNull(item.description());
+        service.edit("shared", item.id(), 1, new Item(Type.FACT, "Edited body", "Context", "Source"));
+        assertEquals("Edited body", stored.latest().items().getFirst().body());
+    }
+
     @BeforeEach void setup() {
         stored = new ContentStack("shared", null, true, null, null, null,
                 List.of(new Revision(1, "Stack", "Description", List.of(), Status.DRAFT, Instant.EPOCH, null, null)), 0L);

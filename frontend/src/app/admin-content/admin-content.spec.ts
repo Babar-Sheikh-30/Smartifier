@@ -100,6 +100,48 @@ describe('Admin content management', () => {
     expect(component.stacks()).toHaveLength(1);
   });
 
+  it('places validation inside the content editor, focuses it and scrolls it into view', async () => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scroll
+    });
+    try {
+      component.startItem();
+      fixture.detectChanges();
+      await component.saveItem(false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const error = fixture.nativeElement.querySelector('#admin-content-editor-error');
+      expect(error).not.toBeNull();
+      expect(error.closest('form')).not.toBeNull();
+      expect(document.activeElement).toBe(error);
+      expect(scroll).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
+      expect(fixture.nativeElement.querySelectorAll('[role="alert"]')).toHaveLength(1);
+      expect(api.change).not.toHaveBeenCalled();
+    } finally {
+      if (original) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', original);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    }
+  });
+
+  it('edits body-only content without title or description fields or fallback headings', async () => {
+    expect(fixture.nativeElement.textContent).not.toContain('Untitled');
+    component.startItem();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#admin-content-title-input')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#admin-content-description')).toBeNull();
+    component.item.body = 'A concise fact';
+    await component.saveItem(true);
+    expect(api.change).toHaveBeenCalledWith(stack, 'content', {
+      type: 'FACT',
+      body: 'A concise fact',
+      answer: '',
+      attribution: ''
+    });
+  });
+
   it('removes a stack only after confirmation and a successful response', async () => {
     component.requestRemoval();
     await component.remove();
