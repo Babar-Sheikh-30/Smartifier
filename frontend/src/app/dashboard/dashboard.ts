@@ -5,11 +5,18 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MemberStacksComponent } from '../member-stacks/member-stacks';
 import { AdminContentComponent } from '../admin-content/admin-content';
+import { AdminReviewComponent } from '../admin-review/admin-review';
 
 @Component({
   selector: 'bs-dashboard',
   standalone: true,
-  imports: [RouterLink, FormsModule, MemberStacksComponent, AdminContentComponent],
+  imports: [
+    RouterLink,
+    FormsModule,
+    MemberStacksComponent,
+    AdminContentComponent,
+    AdminReviewComponent
+  ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })

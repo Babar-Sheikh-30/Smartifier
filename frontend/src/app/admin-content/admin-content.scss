@@ -23,6 +23,8 @@ p {
   border-radius: 12px;
   padding: 20px;
   margin-block: 16px;
+  background: #fffefa;
+  box-shadow: 0 4px 20px #24372c05;
 }
 .stack-editor {
   background: #f6f8f1;
@@ -67,6 +69,48 @@ textarea {
 .form-error {
   color: #a12828;
 }
+.editor-error {
+  padding: 12px 16px;
+  background: #fff2ee;
+  border-left: 3px solid #b24b35;
+  border-radius: 8px;
+  scroll-margin-block: 24px;
+}
+.editor-error:focus {
+  outline: 2px solid #b24b35;
+  outline-offset: 3px;
+}
 .form-success {
   color: #315c31;
+}
+.content-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.type-pill,
+.status-pill {
+  display: inline-block;
+  border-radius: 24px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+.type-pill {
+  background: #edf2e5;
+  color: #345c42;
+}
+.status-pill {
+  background: #f7f0df;
+  color: #866318;
+}
+.status-pill.is-published {
+  background: #e9f3eb;
+  color: #315c31;
+}
+.content-text {
+  font-size: 16px;
+  line-height: 1.8;
 }

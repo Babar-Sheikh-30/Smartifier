@@ -16,8 +16,8 @@ class AdminContentValidationTest {
         var service = mock(AdminContentService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new AdminContentController(service))
                 .setControllerAdvice(new ApiExceptionHandler()).build();
-        String valid = "\"title\":\"Fact\",\"type\":\"FACT\",\"body\":\"Content\",\"expectedRevision\":0";
-        for (String body : new String[] {"{}", "{", "{" + valid.replace("\"Fact\"", "\" \"") + "}",
+        String valid = "\"type\":\"FACT\",\"body\":\"Content\",\"expectedRevision\":0";
+        for (String body : new String[] {"{}", "{", "{" + valid.replace("\"Content\"", "\" \"") + "}",
                 "{" + valid.replace("\"FACT\"", "\"UNKNOWN\"") + "}",
                 "{" + valid.replace("\"Content\"", "\"" + "x".repeat(1001) + "\"") + "}",
                 "{" + valid.replace(",\"expectedRevision\":0", "") + "}"}) {

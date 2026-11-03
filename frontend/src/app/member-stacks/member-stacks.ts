@@ -39,7 +39,7 @@ export class MemberStacksComponent implements OnInit {
     DRAFT: 'Draft',
     PENDING_REVIEW: 'Awaiting admin approval',
     APPROVED: 'Approved',
-    REJECTED: 'Changes requested'
+    REJECTED: 'Denied'
   };
 
   ngOnInit() {

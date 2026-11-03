@@ -43,8 +43,9 @@
   <p class="eyebrow">YOUR PREMIUM WORKSPACE</p>
   <h2 id="personal-stacks-title">Make it your own.</h2>
   <p>
-    Create a mixed-content stack or customize a copy of a default. Your drafts stay private. Submit
-    a saved draft for approval before it can be published.
+    Create a mixed-content stack or customize a copy of a default. Your stacks stay private. Submit
+    a saved draft for admin review, then reload your stacks to see decisions and feedback in version
+    history.
   </p>
   <div class="actions">
     <button
@@ -202,7 +203,7 @@
       Independent copy of a default stack, version {{ stack.sourceVersion }}.
     </p>
     } @if (latest(stack).reviewNote) {
-    <p>{{ latest(stack).reviewNote }}</p>
+    <p>Admin feedback: {{ latest(stack).reviewNote }}</p>
     }
     <div class="actions">
       <button
@@ -242,16 +243,11 @@
           {{ statusLabels[version.status] }} · {{ version.createdAt | date:'medium' }}
         </p>
         @if (version.reviewNote) {
-        <p>{{ version.reviewNote }}</p>
+        <p>Admin feedback: {{ version.reviewNote }}</p>
         }
         <ol>
           @for (item of version.items; track $index) {
           <li>
-            @if (item.title) {
-            <h5>{{ item.title }}</h5>
-            } @if (item.description) {
-            <p>{{ item.description }}</p>
-            }
             <span class="field-hint">{{ item.type }}</span>
             <p class="content-text">{{ item.body }}</p>
             @if (item.answer) {

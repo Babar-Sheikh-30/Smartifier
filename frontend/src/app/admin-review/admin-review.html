@@ -1,0 +1,121 @@
+<section class="review-inbox" aria-labelledby="review-inbox-title">
+  <header class="inbox-heading">
+    <div>
+      <p class="eyebrow">THE CURATION DESK</p>
+      <h2 id="review-inbox-title">
+        Review inbox<span class="queue-count" aria-label="Pending submissions"
+          >{{ entries().length }}</span
+        >
+      </h2>
+      <p>A fresh perspective, ready for your review.</p>
+    </div>
+    <span class="premium-label"><span aria-hidden="true">✦</span> Premium submissions</span>
+  </header>
+  <div class="inbox-toolbar">
+    <p>
+      Review submitted versions, leave a note, and approve or deny. Personal stacks stay private.
+    </p>
+    <button
+      class="button button-small button-outline"
+      (click)="load()"
+      [disabled]="loading() || busy() !== null"
+    >
+      Refresh queue
+    </button>
+  </div>
+  @if (error()) {
+  <p class="review-message error" role="alert">{{ error() }}</p>
+  } @if (notice()) {
+  <p class="review-message success" role="status">{{ notice() }}</p>
+  } @if (loading()) {
+  <p class="loading-message" role="status">Checking for submissions...</p>
+  } @if (!loading() && !error() && !entries().length) {
+  <div class="inbox-empty">
+    <span class="empty-icon" aria-hidden="true">✓</span>
+    <h3>All caught up.</h3>
+    <p>New premium-member submissions will appear here.</p>
+  </div>
+  } @for (entry of entries(); track key(entry)) {
+  <details class="review-card">
+    <summary>
+      <span class="review-summary"
+        ><span class="pending-label">Pending review</span><strong>{{ entry.version.name }}</strong
+        ><span class="submission-meta"
+          >Version {{ entry.version.number }} · {{ entry.version.items.length }} items · {{
+          entry.memberName }}</span
+        ></span
+      >
+      <span class="open-label">View submission <span aria-hidden="true">↗</span></span>
+    </summary>
+    <div class="review-detail">
+      <div class="submission-byline">
+        <span>{{ entry.memberEmail }}</span
+        ><span>{{ entry.version.submittedAt | date:'medium' }}</span>
+      </div>
+      @if (entry.version.description) {
+      <p class="stack-description">{{ entry.version.description }}</p>
+      }
+      <ol class="review-items">
+        @for (item of entry.version.items; track $index) {
+        <li>
+          <span class="type-pill">{{ item.type }}</span>
+          <p class="item-body">{{ item.body }}</p>
+          @if (item.answer) {
+          <p class="item-answer">{{ item.answer }}</p>
+          }@if (item.attribution) {
+          <p class="attribution">Source: {{ item.attribution }}</p>
+          }
+        </li>
+        }
+      </ol>
+      <label [for]="'review-reason-' + key(entry)"
+        >Denial reason
+        <span>(required when denying, or write a custom explanation below)</span></label
+      >
+      <select
+        [id]="'review-reason-' + key(entry)"
+        [(ngModel)]="reasons[key(entry)]"
+        [disabled]="loading() || busy() !== null"
+      >
+        <option [ngValue]="undefined">Choose a reason...</option>
+        @for (reason of denialReasons; track reason) {
+        <option [value]="reason">{{ reason }}</option>
+        }
+      </select>
+      <label [for]="'review-note-' + key(entry)"
+        >Feedback or custom explanation
+        <span>(required for Other; optional for approval)</span></label
+      >
+      <textarea
+        [id]="'review-note-' + key(entry)"
+        [(ngModel)]="notes[key(entry)]"
+        [maxlength]="noteLimit(entry)"
+        rows="3"
+        placeholder="Explain what needs to change or add helpful feedback..."
+        [disabled]="loading() || busy() !== null"
+      ></textarea>
+      <p class="note-hint">
+        The member will see the selected denial reason and your explanation. Up to 500 characters
+        total.
+      </p>
+      <div class="review-actions">
+        <span class="decision-hint">Your decision applies to this submitted version.</span>
+        <button
+          class="button button-small deny-button"
+          (click)="decide(entry, false)"
+          [disabled]="loading() || busy() !== null"
+        >
+          Deny
+        </button>
+        <button
+          class="button button-small"
+          (click)="decide(entry, true)"
+          [disabled]="loading() || busy() !== null"
+        >
+          {{ busy() === key(entry) ? 'Saving decision...' : 'Approve stack' }}
+        </button>
+      </div>
+    </div>
+  </details>
+  }
+</section>

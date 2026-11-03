@@ -33,9 +33,13 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     ResponseEntity<Map<String, String>> validation(Exception exception, HttpServletRequest request) {
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/reviews")) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "Choose approve or deny, include the current revision, and keep the review note within 500 characters."));
+        }
         if (request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/")) {
             return ResponseEntity.badRequest().body(Map.of("message",
-                    "Check the required fields and length limits. Content needs a title, type, and body. Reload if the stack revision is missing."));
+                    "Check the required fields and length limits. Content needs a type and body. Reload if the stack revision is missing."));
         }
         if (exception instanceof MethodArgumentNotValidException validation
                 && validation.getParameter().getContainingClass() == ContentStackController.class) {

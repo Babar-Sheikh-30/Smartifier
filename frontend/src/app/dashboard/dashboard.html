@@ -29,7 +29,8 @@
         }}
       </dd>
     </dl>
-    @if (user.role === 'ADMIN') { <bs-admin-content /> } @if (user.role === 'MEMBER') {
+    @if (user.role === 'ADMIN') { <bs-admin-review /><bs-admin-content /> } @if (user.role ===
+    'MEMBER') {
     <form #phoneForm="ngForm" (ngSubmit)="savePhone()">
       <label for="member-phone">Update your mobile number</label>
       <input
