@@ -28,17 +28,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'microsoft'
           cache: maven
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
@@ -50,18 +50,20 @@ jobs:
         run: chmod +x mvnw
 
       - name: Run backend tests
-        run: ./mvnw -B -Dsmartifier.mongo.tests=true test
+        # Override the workspace-local repository configured in .mvn/maven.config
+        # so dependencies are saved where setup-java's Maven cache expects them.
+        run: ./mvnw -B -Dmaven.repo.local="$HOME/.m2/repository" -Dsmartifier.mongo.tests=true test
 
   frontend:
     name: Frontend - Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
@@ -74,14 +76,14 @@ jobs:
 
   docker:
     name: Docker - Build and Publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - backend
       - frontend
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
