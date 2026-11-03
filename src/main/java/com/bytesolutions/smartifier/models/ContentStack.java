@@ -45,7 +45,7 @@ public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
     }
 
     public record Edit(@NotBlank @Size(max = 100) String name,
-            @Size(max = 500) String description,
+            @NotBlank(message = "Description is required.") @Size(max = 500) String description,
             @NotNull @Size(min = 1, max = 50) List<@NotNull @Valid Item> items,
             @PositiveOrZero long expectedRevision) {}
 

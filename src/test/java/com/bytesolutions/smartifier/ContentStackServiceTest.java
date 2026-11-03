@@ -46,7 +46,8 @@ class ContentStackServiceTest {
         for (Runnable operation : List.<Runnable>of(
                 () -> service.personal(email), () -> service.create(email, edit),
                 () -> service.copy(email, "stack-1"), () -> service.save(email, "stack-1", edit),
-                () -> service.submit(email, "stack-1", 0))) {
+                () -> service.submit(email, "stack-1", 0), () -> service.remove(email, "stack-1", 0),
+                () -> service.cancelSubmission(email, "stack-1", 1, 0))) {
             assertEquals(403, assertThrows(ResponseStatusException.class, operation::run).getStatusCode().value());
         }
         verifyNoInteractions(repository);
@@ -148,5 +149,102 @@ class ContentStackServiceTest {
         assertEquals(409, assertThrows(ResponseStatusException.class,
                 () -> service.save(email, "stack-1", new Edit("One more", "", mixed, 40))).getStatusCode().value());
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void cancellationRestoresAnOlderPendingVersionWithoutChangingNewerDrafts() {
+        member(true);
+        var pending = stack(false, Status.PENDING_REVIEW, 5L);
+        var newer = new Revision(2, "Newer draft", "", mixed, Status.DRAFT, Instant.EPOCH, null, null);
+        var original = new ContentStack(pending.id(), pending.ownerId(), false, "source", 1, null,
+                List.of(pending.latest(), newer), 5L);
+        when(repository.findByIdAndOwnerId("stack-1", "owner-1")).thenReturn(Optional.of(original));
+        when(repository.save(any(ContentStack.class))).thenAnswer(call -> call.getArgument(0));
+        var cancelled = service.cancelSubmission(email, "stack-1", 1, 5);
+        assertEquals(Status.DRAFT, cancelled.versions().getFirst().status());
+        assertNull(cancelled.versions().getFirst().submittedAt());
+        assertNull(cancelled.versions().getFirst().reviewNote());
+        assertEquals(mixed, cancelled.versions().getFirst().items());
+        assertEquals(newer, cancelled.latest());
+        assertEquals("source", cancelled.sourceStackId());
+        assertEquals(2, cancelled.versions().size());
+    }
+
+    @Test
+    void cancellationRejectsMissingReviewedOrStaleSubmissions() {
+        member(true);
+        for (var status : List.of(Status.DRAFT, Status.APPROVED, Status.REJECTED)) {
+            when(repository.findByIdAndOwnerId("stack-1", "owner-1"))
+                    .thenReturn(Optional.of(stack(false, status, 3L)));
+            assertEquals(409, assertThrows(ResponseStatusException.class,
+                    () -> service.cancelSubmission(email, "stack-1", 1, 3)).getStatusCode().value());
+        }
+        when(repository.findByIdAndOwnerId("stack-1", "owner-1"))
+                .thenReturn(Optional.of(stack(false, Status.PENDING_REVIEW, 3L)));
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> service.cancelSubmission(email, "stack-1", 9, 3)).getStatusCode().value());
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.cancelSubmission(email, "stack-1", 1, 2)).getStatusCode().value());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void removalArchivesAllVersionsAndStopsTheSubscription() {
+        member(true);
+        var original = stack(false, Status.PENDING_REVIEW, 3L);
+        when(repository.findByIdAndOwnerId("stack-1", "owner-1")).thenReturn(Optional.of(original));
+        service.remove(email, "stack-1", 3);
+        var saved = org.mockito.ArgumentCaptor.forClass(ContentStack.class);
+        verify(repository).save(saved.capture());
+        assertTrue(saved.getValue().archived());
+        assertEquals(original.versions(), saved.getValue().versions());
+        assertEquals(original.ownerId(), saved.getValue().ownerId());
+        verify(accounts).removeStackSubscription(email, "stack-1");
+    }
+
+    @Test
+    void archivedStacksAreHiddenAndCannotBeChangedOrCancelled() {
+        member(true);
+        var active = stack(false, Status.DRAFT, 3L);
+        var archived = new ContentStack(active.id(), active.ownerId(), false, null, null, null,
+                active.versions(), 3L, true);
+        when(repository.findByOwnerId("owner-1")).thenReturn(List.of(active, archived));
+        assertEquals(List.of(active), service.personal(email));
+        when(repository.findByIdAndOwnerId("stack-1", "owner-1")).thenReturn(Optional.of(archived));
+        for (Runnable operation : List.<Runnable>of(() -> service.remove(email, "stack-1", 3),
+                () -> service.cancelSubmission(email, "stack-1", 1, 3),
+                () -> service.submit(email, "stack-1", 3),
+                () -> service.save(email, "stack-1", new Edit("New", "", mixed, 3)))) {
+            assertEquals(404, assertThrows(ResponseStatusException.class, operation::run).getStatusCode().value());
+        }
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void removalAndCancellationCannotTargetOtherOwnersOrSharedStacks() {
+        member(true);
+        for (var target : List.of(Optional.<ContentStack>empty(), Optional.of(stack(true, Status.APPROVED, 3L)))) {
+            when(repository.findByIdAndOwnerId("stack-1", "owner-1")).thenReturn(target);
+            assertEquals(404, assertThrows(ResponseStatusException.class,
+                    () -> service.remove(email, "stack-1", 3)).getStatusCode().value());
+            assertEquals(404, assertThrows(ResponseStatusException.class,
+                    () -> service.cancelSubmission(email, "stack-1", 1, 3)).getStatusCode().value());
+        }
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void concurrentRemovalOrCancellationCannotOverwriteAnAdminDecision() {
+        member(true);
+        when(repository.findByIdAndOwnerId("stack-1", "owner-1"))
+                .thenReturn(Optional.of(stack(false, Status.PENDING_REVIEW, 3L)));
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.remove(email, "stack-1", 2)).getStatusCode().value());
+        when(repository.save(any(ContentStack.class))).thenThrow(new OptimisticLockingFailureException("reviewed"));
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.remove(email, "stack-1", 3)).getStatusCode().value());
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.cancelSubmission(email, "stack-1", 1, 3)).getStatusCode().value());
+        verify(accounts, never()).removeStackSubscription(anyString(), anyString());
     }
 }

@@ -89,4 +89,28 @@ describe('StackService', () => {
       );
     await rejected;
   });
+
+  it('cancels a specific version with its loaded revision and CSRF token', async () => {
+    const pending = service.cancelSubmission(stack, 2);
+    await Promise.resolve();
+    const request = http.expectOne(
+      '/api/member/stacks/personal%2Fone/versions/2/cancel-submission'
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('token');
+    expect(request.request.body).toEqual({ expectedRevision: 7 });
+    request.flush(stack);
+    await expect(pending).resolves.toEqual(stack);
+  });
+
+  it('removes a stack with CSRF and its loaded revision', async () => {
+    const pending = service.remove(stack);
+    await Promise.resolve();
+    const request = http.expectOne('/api/member/stacks/personal%2Fone/remove');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('token');
+    expect(request.request.body).toEqual({ expectedRevision: 7 });
+    request.flush(null);
+    await pending;
+  });
 });

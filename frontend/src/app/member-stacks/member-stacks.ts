@@ -31,6 +31,7 @@ export class MemberStacksComponent implements OnInit {
   readonly editorOpen = signal(false);
   readonly editing = signal<PersonalStack | null>(null);
   readonly savedStackId = signal<string | null>(null);
+  readonly removing = signal<PersonalStack | null>(null);
   readonly types = ['FACT', 'QUOTE', 'JOKE', 'VOCABULARY'] as const;
   name = '';
   description = '';
@@ -48,7 +49,7 @@ export class MemberStacksComponent implements OnInit {
 
   async load() {
     // Keep a refresh from replacing data while the member is editing or saving.
-    if (this.busy() || this.editorOpen()) return;
+    if (this.busy() || this.editorOpen() || this.removing()) return;
     this.loading.set(true);
     this.error.set('');
     try {
@@ -97,6 +98,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async toggle(id: string) {
+    if (this.removing()) return;
     await this.action(async () => {
       const subscribe = !this.subscribed(id);
       await this.auth.subscribe(id, subscribe);
@@ -107,7 +109,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   start(stack: PersonalStack | null = null, version?: StackVersion) {
-    if (this.busy() || this.editorOpen()) return;
+    if (this.busy() || this.editorOpen() || this.removing()) return;
     this.populate(stack, version);
   }
 
@@ -160,6 +162,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async copy(id: string) {
+    if (this.removing() || this.editorOpen()) return;
     await this.action(async () => {
       const stack = await this.api.copy(id);
       this.replace(stack);
@@ -170,10 +173,21 @@ export class MemberStacksComponent implements OnInit {
 
   async save(formValid: boolean) {
     if (this.busy()) return;
-    if (!formValid || !this.name.trim() || this.items.some((item) => !item.body.trim())) {
-      this.error.set(
-        'Enter a stack name and content for every item. Check the field length limits, or remove any unused items.'
+    const problems: string[] = [];
+    if (!this.name.trim()) problems.push('Stack name is required.');
+    else if (this.name.length > 100) problems.push('Stack name must be 100 characters or fewer.');
+    if (!this.description.trim()) problems.push('Description is required.');
+    else if (this.description.length > 500)
+      problems.push('Description must be 500 characters or fewer.');
+    if (this.items.length === 0 || this.items.some((item) => !item.body.trim())) {
+      problems.push(
+        'Enter content for every item, or remove unused items. At least one item is required.'
       );
+    }
+    if (!formValid && problems.length === 0)
+      problems.push('Check the content field length limits before saving.');
+    if (problems.length) {
+      this.error.set('Could not save your stack. ' + problems.join(' '));
       this.focusElement('stack-editor-error');
       return;
     }
@@ -200,9 +214,53 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async submit(stack: PersonalStack) {
+    if (this.removing() || this.editorOpen()) return;
     await this.action(async () => {
       this.replace(await this.api.submit(stack));
       this.notice.set('Submitted for admin approval. This version is now read-only.');
+    });
+  }
+
+  async cancelSubmission(stack: PersonalStack, version: StackVersion) {
+    if (this.editorOpen() || this.removing()) return;
+    await this.action(async () => {
+      this.replace(await this.api.cancelSubmission(stack, version.number));
+      this.notice.set(
+        `Approval request for version ${version.number} cancelled. That version is now a draft.`
+      );
+    });
+  }
+
+  requestRemoval(stack: PersonalStack) {
+    if (this.busy() || this.loading() || this.editorOpen() || this.removing()) return;
+    this.removing.set(stack);
+    this.error.set('');
+    this.notice.set('');
+  }
+
+  cancelRemoval() {
+    if (!this.busy()) this.removing.set(null);
+  }
+
+  async remove() {
+    const stack = this.removing();
+    if (!stack || this.editorOpen()) return;
+    await this.action(async () => {
+      await this.api.remove(stack);
+      this.personal.update((stacks) => stacks.filter((existing) => existing.id !== stack.id));
+      this.auth.user.update((user) =>
+        user
+          ? {
+              ...user,
+              subscriptions: user.subscriptions.filter((id) => id !== stack.id)
+            }
+          : null
+      );
+      if (this.savedStackId() === stack.id) this.savedStackId.set(null);
+      this.removing.set(null);
+      this.notice.set(
+        'Personal stack removed. Its subscriptions and pending approval requests are stopped.'
+      );
     });
   }
 }

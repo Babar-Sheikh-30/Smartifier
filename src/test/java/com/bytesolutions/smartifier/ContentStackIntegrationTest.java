@@ -29,6 +29,7 @@ class ContentStackIntegrationTest {
     private static final String PASSWORD = "Integration-password-123!";
     @Value("${local.server.port}") int port;
     @Autowired ContentStackBootstrap bootstrap;
+    @Autowired com.bytesolutions.smartifier.services.AdminReviewService reviews;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -140,6 +141,44 @@ class ContentStackIntegrationTest {
             assertEquals(4, database.getCollection("content_stacks").countDocuments());
             assertEquals(2, database.getCollection("content_stacks").find(new Document("_id", new org.bson.types.ObjectId(id))).first()
                     .getList("versions", Document.class).size());
+
+            var change = new Document("expectedRevision", pending.get("revision")).toJson();
+            var cancelPath = path + "/" + id + "/versions/2/cancel-submission";
+            assertTrue(reviews.pending().stream().anyMatch(entry -> entry.stackId().equals(id)));
+            assertEquals(403, post(owner, cancelPath, change, false, false).statusCode());
+            assertEquals(400, post(owner, cancelPath, "{}", true, false).statusCode());
+            assertEquals(404, post(other, cancelPath, change, true, false).statusCode());
+            assertEquals(404, post(other, path + "/" + id + "/remove", change, true, false).statusCode());
+            var cancelledResponse = post(owner, cancelPath, change, true, false);
+            assertEquals(200, cancelledResponse.statusCode(), cancelledResponse.body());
+            var cancelled = Document.parse(cancelledResponse.body());
+            assertEquals("DRAFT", cancelled.getList("versions", Document.class).getLast().getString("status"));
+            assertNull(cancelled.getList("versions", Document.class).getLast().get("submittedAt"));
+            assertTrue(reviews.pending().stream().noneMatch(entry -> entry.stackId().equals(id)));
+            assertEquals(409, post(owner, cancelPath, change, true, false).statusCode());
+            var resubmittedResponse = post(owner, path + "/" + id + "/submit",
+                    new Document("expectedRevision", cancelled.get("revision")).toJson(), true, false);
+            assertEquals(200, resubmittedResponse.statusCode(), resubmittedResponse.body());
+            var resubmitted = Document.parse(resubmittedResponse.body());
+            assertTrue(reviews.pending().stream().anyMatch(entry -> entry.stackId().equals(id)));
+            subscription.put("subscribed", true);
+            assertEquals(200, post(owner, "/api/member/subscriptions", subscription.toJson(), true, false).statusCode());
+            var removePath = path + "/" + id + "/remove";
+            var removal = new Document("expectedRevision", resubmitted.get("revision")).toJson();
+            assertEquals(403, post(owner, removePath, removal, false, false).statusCode());
+            assertEquals(400, post(owner, removePath, "{}", true, false).statusCode());
+            assertEquals(409, post(owner, removePath, change, true, false).statusCode());
+            assertEquals(204, post(owner, removePath, removal, true, false).statusCode());
+            assertEquals("[]", get(owner, path).body());
+            assertTrue(Document.parse(get(owner, "/api/auth/me").body()).getList("subscriptions", String.class).isEmpty());
+            assertTrue(reviews.pending().stream().noneMatch(entry -> entry.stackId().equals(id)));
+            assertEquals(400, post(owner, "/api/member/subscriptions", subscription.toJson(), true, false).statusCode());
+            assertEquals(404, post(owner, removePath, removal, true, false).statusCode());
+            assertEquals(404, post(owner, cancelPath, removal, true, false).statusCode());
+            assertTrue(database.getCollection("content_stacks").find(new Document("_id", new org.bson.types.ObjectId(id)))
+                    .first().getBoolean("archived"));
+            assertFalse(Boolean.TRUE.equals(database.getCollection("content_stacks")
+                    .find(new Document("_id", "everyday-science")).first().getBoolean("archived")));
         }
     }
 }
