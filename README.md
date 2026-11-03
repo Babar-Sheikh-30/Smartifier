@@ -54,6 +54,14 @@ npm.cmd start
 
 Keep Spring Boot running on port 8080, then open http://localhost:4200. Angular reloads the page when you save frontend changes and proxies `/api/**` to Spring Boot. Use one browser origin consistently during a session.
 
+## Frontend tests
+
+Run `npm test` (or `npm.cmd test` in PowerShell) from the repository root. The suite uses Angular's Vitest integration with jsdom and mocked HTTP requests; MongoDB and the backend do not need to be running.
+
+Tests cover login and registration forms, password and phone validation, session state, CSRF-protected requests, and stack revision conflicts. GitHub Actions runs this suite in the frontend job.
+
+For watch mode, run `npm run ng -- test --watch`.
+
 ## Stripe payments
 
 To set up a local test payment:

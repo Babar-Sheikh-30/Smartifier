@@ -7,6 +7,7 @@
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
   },
   "scripts": {
+    "test": "ng test --watch=false",
     "ng": "ng"
   },
   "dependencies": {
@@ -23,6 +24,8 @@
     "@angular/build": "20.3.33",
     "@angular/cli": "20.3.33",
     "@angular/compiler-cli": "20.3.33",
-    "typescript": "~5.9.2"
+    "jsdom": "^26.1.0",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.0"
   }
 }

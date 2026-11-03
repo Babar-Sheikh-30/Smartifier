@@ -53,7 +53,7 @@ jobs:
         run: ./mvnw -B -Dsmartifier.mongo.tests=true test
 
   frontend:
-    name: Frontend - Install Dependencies
+    name: Frontend - Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -69,8 +69,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Verify Angular CLI
-        run: npm run ng -- version
+      - name: Run frontend tests
+        run: npm test
 
   docker:
     name: Docker - Build and Publish

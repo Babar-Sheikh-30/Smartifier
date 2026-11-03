@@ -10,6 +10,14 @@
       "sourceRoot": "src",
       "prefix": "bs",
       "architect": {
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "buildTarget": "smartifier:build:development",
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest"
+          }
+        },
         "build": {
           "builder": "@angular/build:application",
           "options": {

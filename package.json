@@ -10,6 +10,7 @@
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
   },
   "scripts": {
+    "test": "npm run test --workspace @byte-solutions/smartifier-frontend",
     "ng": "npm run ng --workspace @byte-solutions/smartifier-frontend --",
     "build": "npm run ng -- build",
     "start": "npm run ng -- serve",
