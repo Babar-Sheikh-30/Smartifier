@@ -1,7 +1,7 @@
 <section aria-labelledby="default-stacks-title">
   <p class="eyebrow">INCLUDED WITH YOUR MEMBERSHIP</p>
   <h2 id="default-stacks-title">Choose what sparks your curiosity.</h2>
-  <p>Three default stacks, each with a mix of facts, quotes, jokes, and vocabulary.</p>
+  <p>Explore published stacks with a mix of facts, quotes, jokes, and vocabulary.</p>
   <p class="field-hint">Save your subscriptions now. Text delivery is coming soon.</p>
   @if (!auth.user()?.phoneNumber) {
   <p class="form-error">Add your mobile number above before subscribing.</p>
@@ -247,6 +247,11 @@
         <ol>
           @for (item of version.items; track $index) {
           <li>
+            @if (item.title) {
+            <h5>{{ item.title }}</h5>
+            } @if (item.description) {
+            <p>{{ item.description }}</p>
+            }
             <span class="field-hint">{{ item.type }}</span>
             <p class="content-text">{{ item.body }}</p>
             @if (item.answer) {

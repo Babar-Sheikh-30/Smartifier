@@ -81,18 +81,21 @@ public class AccountService implements UserDetailsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose an available stack.");
         }
         Account account = current(email);
-        boolean defaultStack = Set.of("everyday-science", "words-and-language", "learning-habits").contains(stack);
+        // Legacy accounts must add a valid messaging number before subscribing.
+        if (subscribed) normalizePhone(account.phoneNumber());
+        var shared = mongo.findById(stack, ContentStack.class);
+        boolean defaultStack = shared != null && shared.defaultStack() && !shared.archived()
+                && shared.publishedVersion() != null;
+        boolean stoppingExisting = !subscribed && account.subscriptions().contains(stack);
         // Personal stacks must belong to this member. Unsubscribing remains possible
         // without premium so a member can always stop an existing subscription.
-        if (!defaultStack && !(account.role() == Role.MEMBER && (!subscribed || account.premium())
+        if (!stoppingExisting && !defaultStack && !(account.role() == Role.MEMBER && (!subscribed || account.premium())
                 && mongo.exists(org.springframework.data.mongodb.core.query.Query.query(
                         org.springframework.data.mongodb.core.query.Criteria.where("id").is(stack)
                                 .and("ownerId").is(account.id()).and("defaultStack").is(false)), ContentStack.class))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Choose a default stack or one of your own premium stacks.");
         }
-        // Legacy members may have a missing or blank phone number and must add one before subscribing.
-        if (subscribed) normalizePhone(account.phoneNumber());
         // Update just this stack so simultaneous requests cannot overwrite other subscriptions.
         var query = org.springframework.data.mongodb.core.query.Query.query(
                 org.springframework.data.mongodb.core.query.Criteria.where("id").is(account.id()));

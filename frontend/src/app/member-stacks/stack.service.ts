@@ -5,6 +5,9 @@ import { AuthService } from '../auth.service';
 
 export type ContentType = 'QUOTE' | 'FACT' | 'JOKE' | 'VOCABULARY';
 export interface ContentItem {
+  id?: string;
+  title?: string | null;
+  description?: string | null;
   type: ContentType;
   body: string;
   answer: string;

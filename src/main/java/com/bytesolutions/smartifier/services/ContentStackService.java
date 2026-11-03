@@ -28,6 +28,7 @@ public class ContentStackService {
     public List<Summary> defaults() {
         // Show the approved published version, even when a newer draft exists.
         return stacks.findByDefaultStackTrue().stream()
+                .filter(stack -> !stack.archived())
                 .filter(stack -> stack.publishedVersion() != null)
                 .map(stack -> {
                     var version = stack.versions().stream()
@@ -62,6 +63,7 @@ public class ContentStackService {
     public ContentStack copy(String email, String id) {
         var owner = premium(email);
         var source = stacks.findById(id).filter(ContentStack::defaultStack)
+                .filter(stack -> !stack.archived())
                 .filter(stack -> stack.publishedVersion() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Default stack not found."));
         var version = source.versions().stream()
