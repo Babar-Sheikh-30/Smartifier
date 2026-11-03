@@ -43,6 +43,15 @@ public class ApiExceptionHandler {
         }
         if (exception instanceof MethodArgumentNotValidException validation
                 && validation.getParameter().getContainingClass() == ContentStackController.class) {
+            var metadataErrors = validation.getBindingResult().getFieldErrors().stream()
+                    .filter(error -> error.getField().equals("name") || error.getField().equals("description"))
+                    .map(error -> error.getField().equals("name")
+                            ? "Stack name is required and must be 100 characters or fewer."
+                            : "Description is required and must be 500 characters or fewer.")
+                    .distinct().toList();
+            if (!metadataErrors.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Could not save your stack. " + String.join(" ", metadataErrors)));
+            }
             return ResponseEntity.badRequest().body(Map.of("message",
                     "Enter a stack name (up to 100 characters) and 1–50 content items. Each item needs a type and text (up to 1,000 characters)."));
         }

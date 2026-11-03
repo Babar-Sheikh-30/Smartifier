@@ -92,7 +92,8 @@ public class AccountService implements UserDetailsService {
         if (!stoppingExisting && !defaultStack && !(account.role() == Role.MEMBER && (!subscribed || account.premium())
                 && mongo.exists(org.springframework.data.mongodb.core.query.Query.query(
                         org.springframework.data.mongodb.core.query.Criteria.where("id").is(stack)
-                                .and("ownerId").is(account.id()).and("defaultStack").is(false)), ContentStack.class))) {
+                                .and("ownerId").is(account.id()).and("defaultStack").is(false)
+                                .and("archived").ne(true)), ContentStack.class))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Choose a default stack or one of your own premium stacks.");
         }
@@ -104,6 +105,13 @@ public class AccountService implements UserDetailsService {
         else update.pull("subscriptions", stack);
         mongo.updateFirst(query, update, Account.class);
         return current(email);
+    }
+
+    public void removeStackSubscription(String email, String stackId) {
+        var account = current(email);
+        mongo.updateFirst(org.springframework.data.mongodb.core.query.Query.query(
+                org.springframework.data.mongodb.core.query.Criteria.where("id").is(account.id())),
+                new org.springframework.data.mongodb.core.query.Update().pull("subscriptions", stackId), Account.class);
     }
 
     public Account updatePhone(String email, String phoneNumber) {

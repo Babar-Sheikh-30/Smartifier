@@ -17,7 +17,7 @@
       <button
         class="button button-small"
         type="button"
-        [disabled]="busy() || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
+        [disabled]="busy() || removing() !== null || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
         [attr.aria-pressed]="subscribed(stack.id)"
         (click)="toggle(stack.id)"
       >
@@ -27,7 +27,7 @@
       <button
         class="button button-small button-outline"
         type="button"
-        [disabled]="busy() || editorOpen()"
+        [disabled]="busy() || editorOpen() || removing() !== null"
         (click)="copy(stack.id)"
       >
         Make a personal copy
@@ -51,7 +51,7 @@
     <button
       class="button button-small"
       type="button"
-      [disabled]="busy() || loading() || editorOpen()"
+      [disabled]="busy() || loading() || editorOpen() || removing() !== null"
       (click)="start()"
     >
       Create a stack
@@ -59,7 +59,7 @@
     <button
       class="button button-small button-outline"
       type="button"
-      [disabled]="busy() || loading() || editorOpen()"
+      [disabled]="busy() || loading() || editorOpen() || removing() !== null"
       (click)="load()"
     >
       Reload stacks
@@ -93,7 +93,7 @@
       @if (error()) {
       <p id="stack-editor-error" class="form-error" role="alert" tabindex="-1">{{ error() }}</p>
       }
-      <label for="stack-name">Stack name</label>
+      <label for="stack-name">Stack name (required)</label>
       <input
         id="stack-name"
         name="stackName"
@@ -101,15 +101,25 @@
         required
         maxlength="100"
         pattern=".*\S.*"
+        aria-describedby="stack-name-hint"
       />
-      <label for="stack-description">Description</label>
+      <p id="stack-name-hint" class="field-hint">
+        Enter a name, up to 100 characters. Blank spaces alone do not count.
+      </p>
+      <label for="stack-description">Description (required)</label>
       <textarea
         id="stack-description"
         name="description"
         [(ngModel)]="description"
+        required
+        pattern="[\s\S]*\S[\s\S]*"
+        aria-describedby="stack-description-hint"
         maxlength="500"
         rows="2"
       ></textarea>
+      <p id="stack-description-hint" class="field-hint">
+        Describe what this stack contains, up to 500 characters. Blank spaces alone do not count.
+      </p>
       @for (item of items; track item; let index = $index) {
       <fieldset class="content-item">
         <legend>Item {{ index + 1 }}</legend>
@@ -181,7 +191,28 @@
   </form>
   }
   <h3 id="personal-stack-list-title">Your personal stacks ({{ personal().length }})</h3>
-  @if (notice()) {
+  @if (removing(); as stack) {
+  <section class="stack-card" role="region" aria-labelledby="remove-stack-title">
+    <h3 id="remove-stack-title">Remove {{ latest(stack).name }}?</h3>
+    <p>
+      This removes the stack and its version history from your workspace, stops its subscription,
+      and withdraws all pending approval requests. You cannot restore it from this page.
+    </p>
+    <div class="actions">
+      <button class="button button-small" type="button" [disabled]="busy()" (click)="remove()">
+        Remove stack
+      </button>
+      <button
+        class="button button-small button-outline"
+        type="button"
+        [disabled]="busy()"
+        (click)="cancelRemoval()"
+      >
+        Keep stack
+      </button>
+    </div>
+  </section>
+  } @if (notice()) {
   <p class="form-success" role="status">{{ notice() }}</p>
   } @if (!loading() && personal().length === 0) {
   <p>You have no personal stacks yet. Start from scratch or make a copy above.</p>
@@ -209,7 +240,7 @@
       <button
         class="button button-small"
         type="button"
-        [disabled]="busy() || loading() || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
+        [disabled]="busy() || loading() || removing() !== null || (!auth.user()?.phoneNumber && !subscribed(stack.id))"
         [attr.aria-pressed]="subscribed(stack.id)"
         (click)="toggle(stack.id)"
       >
@@ -218,7 +249,7 @@
       <button
         class="button button-small button-outline"
         type="button"
-        [disabled]="busy() || editorOpen() || stack.versions.length >= 40"
+        [disabled]="busy() || editorOpen() || removing() !== null || stack.versions.length >= 40"
         (click)="start(stack)"
       >
         Edit as a new version
@@ -227,12 +258,29 @@
       <button
         class="button button-small"
         type="button"
-        [disabled]="busy() || editorOpen()"
+        [disabled]="busy() || editorOpen() || removing() !== null"
         (click)="submit(stack)"
       >
         Submit for approval
       </button>
+      } @if (latest(stack).status === 'PENDING_REVIEW') {
+      <button
+        class="button button-small button-outline"
+        type="button"
+        [disabled]="busy() || loading() || editorOpen() || removing() !== null"
+        (click)="cancelSubmission(stack, latest(stack))"
+      >
+        Cancel approval request
+      </button>
       }
+      <button
+        class="button button-small button-outline"
+        type="button"
+        [disabled]="busy() || loading() || editorOpen() || removing() !== null"
+        (click)="requestRemoval(stack)"
+      >
+        Remove stack
+      </button>
     </div>
     <details>
       <summary>Content and version history ({{ stack.versions.length }})</summary>
@@ -244,6 +292,15 @@
         </p>
         @if (version.reviewNote) {
         <p>Admin feedback: {{ version.reviewNote }}</p>
+        } @if (version.status === 'PENDING_REVIEW' && version.number !== latest(stack).number) {
+        <button
+          class="button button-small button-outline"
+          type="button"
+          [disabled]="busy() || loading() || editorOpen() || removing() !== null"
+          (click)="cancelSubmission(stack, version)"
+        >
+          Cancel approval request for version {{ version.number }}
+        </button>
         }
         <ol>
           @for (item of version.items; track $index) {
@@ -261,7 +318,7 @@
         <button
           class="button button-small button-outline"
           type="button"
-          [disabled]="busy() || editorOpen() || stack.versions.length >= 40"
+          [disabled]="busy() || editorOpen() || removing() !== null || stack.versions.length >= 40"
           (click)="start(stack, version)"
         >
           Use this version as a draft

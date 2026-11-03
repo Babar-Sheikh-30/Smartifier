@@ -49,6 +49,7 @@ public class ContentStackService {
 
     public List<ContentStack> personal(String email) {
         return stacks.findByOwnerId(premium(email).id()).stream()
+                .filter(stack -> !stack.archived())
                 .sorted(java.util.Comparator.comparing(stack -> stack.latest().createdAt(), java.util.Comparator.reverseOrder()))
                 .toList();
     }
@@ -79,7 +80,7 @@ public class ContentStackService {
 
     private ContentStack owned(String email, String id, long expectedRevision) {
         var owner = premium(email);
-        var stack = stacks.findByIdAndOwnerId(id, owner.id()).filter(s -> !s.defaultStack())
+        var stack = stacks.findByIdAndOwnerId(id, owner.id()).filter(s -> !s.defaultStack() && !s.archived())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Personal stack not found."));
         // Reject edits based on stale client data before attempting to save.
         if (stack.revision() == null || stack.revision() != expectedRevision) {
@@ -110,6 +111,35 @@ public class ContentStackService {
         versions.set(versions.size() - 1, new Revision(latest.number(), latest.name(), latest.description(),
                 latest.items(), Status.PENDING_REVIEW, latest.createdAt(), Instant.now(), null));
         return persist(stack, versions);
+    }
+
+    public ContentStack cancelSubmission(String email, String id, int number, long expectedRevision) {
+        var stack = owned(email, id, expectedRevision);
+        var versions = new ArrayList<>(stack.versions());
+        int index = -1;
+        for (int i = 0; i < versions.size(); i++) if (versions.get(i).number() == number) index = i;
+        if (index < 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Submitted version not found.");
+        }
+        var submitted = versions.get(index);
+        if (submitted.status() != Status.PENDING_REVIEW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This request is no longer awaiting approval. Reload your stacks.");
+        }
+        versions.set(index, new Revision(submitted.number(), submitted.name(), submitted.description(),
+                submitted.items(), Status.DRAFT, submitted.createdAt(), null, null));
+        return persist(stack, versions);
+    }
+
+    public void remove(String email, String id, long expectedRevision) {
+        var stack = owned(email, id, expectedRevision);
+        try {
+            // Retain history while excluding the stack from member access and admin review.
+            stacks.save(new ContentStack(stack.id(), stack.ownerId(), false, stack.sourceStackId(),
+                    stack.sourceVersion(), stack.publishedVersion(), stack.versions(), stack.revision(), true));
+        } catch (OptimisticLockingFailureException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before removing it.");
+        }
+        accounts.removeStackSubscription(email, id);
     }
 
     private Revision draft(int number, Edit edit) {

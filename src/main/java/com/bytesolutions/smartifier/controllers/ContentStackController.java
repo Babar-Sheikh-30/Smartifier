@@ -6,6 +6,8 @@ import com.bytesolutions.smartifier.models.ContentStack;
 import com.bytesolutions.smartifier.services.ContentStackService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,6 +17,7 @@ public class ContentStackController {
     public ContentStackController(ContentStackService stacks) { this.stacks = stacks; }
     // The client sends the revision it last loaded so stale submissions can be rejected.
     public record Submission(@PositiveOrZero long expectedRevision) {}
+    public record Change(@NotNull @PositiveOrZero Long expectedRevision) {}
 
     @GetMapping("/defaults")
     public List<ContentStackService.Summary> defaults() { return stacks.defaults(); }
@@ -38,5 +41,17 @@ public class ContentStackController {
     @PostMapping("/{id}/submit")
     public ContentStack submit(Principal user, @PathVariable String id, @Valid @RequestBody Submission submission) {
         return stacks.submit(user.getName(), id, submission.expectedRevision());
+    }
+
+    @PostMapping("/{id}/versions/{number}/cancel-submission")
+    public ContentStack cancelSubmission(Principal user, @PathVariable String id, @PathVariable int number,
+            @Valid @RequestBody Change change) {
+        return stacks.cancelSubmission(user.getName(), id, number, change.expectedRevision());
+    }
+
+    @PostMapping("/{id}/remove")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void remove(Principal user, @PathVariable String id, @Valid @RequestBody Change change) {
+        stacks.remove(user.getName(), id, change.expectedRevision());
     }
 }

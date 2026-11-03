@@ -13,6 +13,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class ContentStackValidationTest {
     @Test
+    void nameAndDescriptionAreRequiredForCreatingAndSaving() throws Exception {
+        var service = mock(ContentStackService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new ContentStackController(service))
+                .setControllerAdvice(new ApiExceptionHandler()).build();
+        for (String field : new String[] {"name", "description"}) {
+            for (String value : new String[] {null, "", " \n\t "}) {
+                var body = new java.util.HashMap<String, Object>();
+                body.put("name", "My stack");
+                body.put("description", "Interesting facts");
+                body.put("items", java.util.List.of(java.util.Map.of("type", "FACT", "body", "A fact")));
+                body.put("expectedRevision", 0);
+                if (value == null) body.remove(field);
+                else body.put(field, value);
+                for (String path : new String[] {"/api/member/stacks", "/api/member/stacks/personal/versions"}) {
+                    mvc.perform(post(path).principal(() -> "member@example.com")
+                            .contentType(MediaType.APPLICATION_JSON).content(new org.bson.Document(body).toJson()))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                    .jsonPath("$.message").value(org.hamcrest.Matchers.containsString(
+                                            field.equals("name") ? "Stack name is required" : "Description is required")));
+                }
+            }
+        }
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void invalidOrOversizedContentNeverReachesService() throws Exception {
         var service = mock(ContentStackService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ContentStackController(service))
@@ -26,7 +53,8 @@ class ContentStackValidationTest {
                 "{\"name\":\"Test\",\"items\":[{\"type\":\"FACT\",\"body\":\"   \"}]}",
                 "{\"name\":\"Test\",\"items\":[{\"type\":\"FACT\",\"body\":\"" + "x".repeat(1001) + "\"}]}"}) {
             mvc.perform(post("/api/member/stacks").principal(() -> "member@example.com")
-                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+                    .contentType(MediaType.APPLICATION_JSON).content(new org.bson.Document(org.bson.Document.parse(body))
+                            .append("description", "A valid description").toJson())).andExpect(status().isBadRequest());
         }
         verifyNoInteractions(service);
     }

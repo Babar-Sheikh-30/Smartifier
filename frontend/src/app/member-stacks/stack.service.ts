@@ -75,4 +75,18 @@ export class StackService {
       expectedRevision: stack.revision
     });
   }
+  cancelSubmission(stack: PersonalStack, version: number) {
+    return this.post(`/${encodeURIComponent(stack.id)}/versions/${version}/cancel-submission`, {
+      expectedRevision: stack.revision
+    });
+  }
+  async remove(stack: PersonalStack) {
+    await firstValueFrom(
+      this.http.post<void>(
+        `${this.base}/${encodeURIComponent(stack.id)}/remove`,
+        { expectedRevision: stack.revision },
+        { headers: await this.auth.headers() }
+      )
+    );
+  }
 }

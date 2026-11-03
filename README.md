@@ -277,6 +277,14 @@ Removal requires confirmation. Removing content takes it out of both working and
 
 Stack/content admin APIs use `/api/admin/stacks`, require ADMIN authorization, and require CSRF on mutations. Updates include the loaded `expectedRevision`; conflicting edits return `409` and require reloading. Stacks retain the existing 50-item/40-version limits; publishing generally stores a published snapshot plus a working draft and consumes two versions. Stack archival remains possible at the history limit. Legacy content without IDs remains readable; IDs are persisted when the admin next saves the stack. No database migration is required.
 
+### Removing personal stacks and cancelling approval requests
+
+Creating or saving a personal stack requires a nonblank name (up to 100 characters) and description (up to 500 characters). The editor explains missing fields and other validation failures without discarding your changes. The backend enforces these requirements too.
+
+Premium members can choose **Remove stack** on a personal stack, then confirm **Remove stack** or choose **Keep stack**. Removal archives the stack and its version history, hides it from the workspace and admin review inbox, and stops its subscription. It does not change the shared default stack that a personal copy came from. Archived stacks cannot be edited, resubmitted, or subscribed to, and there is no restore control.
+
+Choose **Cancel approval request** on a pending stack to return that submitted version to Draft. Pending older versions have their own cancellation button in version history. Cancellation preserves the content and newer versions; the cancelled version leaves the admin queue. The latest draft can be submitted again. If an admin decision or another edit already changed the stack, reload before retrying.
+
 ### Premium-member review inbox
 
 Premium members use **Submit for approval** on a saved draft. The admin **Review inbox** lists pending versions from current premium members, oldest submissions first. Expand a card to inspect its submitted content, member, version, and submission date. Approvals can include optional feedback. Denials require a standard reason (inappropriate content, inaccurate information, unreliable sources, incomplete content, duplicates, or off-topic content) or a custom explanation; **Other** requires an explanation. The selected reason and explanation are saved together as member-visible feedback, up to 500 characters total. The reviewed version becomes `APPROVED` or `REJECTED`, leaves the queue, and displays the decision/feedback in the member's version history after reloading. A denied member can edit a new draft and submit again.
@@ -314,7 +322,7 @@ This is a local testing step, not an automatic result of Stripe payment. Never u
 
 Versions and items are embedded so each save is atomic without MongoDB multi-document transactions. Limits of 40 versions, 50 items per version, and bounded text fields keep documents below MongoDB's document size limit, including with multilingual content. Content text allows 1,000 characters per body/answer, attribution allows 300, stack names allow 100, and descriptions allow 500. Review status supports `DRAFT`, `PENDING_REVIEW`, `APPROVED`, and `REJECTED`; member endpoints only create drafts and submit them for review.
 
-Member stack APIs are under `/api/member/stacks`: `GET /defaults`, `GET /`, `POST /` to create, `POST /{id}/copy`, `POST /{id}/versions`, and `POST /{id}/submit`. Save and submit requests include `expectedRevision` from the last loaded stack. Content type rules, default names, and review workflows can be extended later.
+Member stack APIs are under `/api/member/stacks`: `GET /defaults`, `GET /`, `POST /` to create, `POST /{id}/copy`, `POST /{id}/versions`, `POST /{id}/submit`, `POST /{id}/versions/{number}/cancel-submission`, and `POST /{id}/remove`. Save, submit, cancellation, and removal requests include `expectedRevision` from the last loaded stack. Cancellation and removal require this field and reject missing or negative revisions. Removal returns HTTP 204. All mutations require a CSRF token; personal stack management requires premium membership and ownership.
 
 ## Local accounts
 
