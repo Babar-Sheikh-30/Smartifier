@@ -4,11 +4,12 @@ import { AuthService } from '../auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MemberStacksComponent } from '../member-stacks/member-stacks';
+import { AdminContentComponent } from '../admin-content/admin-content';
 
 @Component({
   selector: 'bs-dashboard',
   standalone: true,
-  imports: [RouterLink, FormsModule, MemberStacksComponent],
+  imports: [RouterLink, FormsModule, MemberStacksComponent, AdminContentComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })

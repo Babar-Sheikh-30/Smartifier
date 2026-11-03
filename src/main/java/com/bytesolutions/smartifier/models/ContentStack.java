@@ -14,15 +14,29 @@ import jakarta.validation.constraints.*;
 // counter, separate from the content version numbers kept in versions.
 public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
         String sourceStackId, Integer sourceVersion, Integer publishedVersion,
-        List<Revision> versions, @Version Long revision) {
-    public ContentStack { versions = List.copyOf(versions); }
+        List<Revision> versions, @Version Long revision, Boolean archived) {
+    public ContentStack {
+        versions = List.copyOf(versions);
+        archived = Boolean.TRUE.equals(archived);
+    }
+
+    // Keep existing member callers and documents compatible with active stacks.
+    public ContentStack(String id, String ownerId, boolean defaultStack, String sourceStackId,
+            Integer sourceVersion, Integer publishedVersion, List<Revision> versions, Long revision) {
+        this(id, ownerId, defaultStack, sourceStackId, sourceVersion, publishedVersion, versions, revision, false);
+    }
 
     public enum Type { QUOTE, FACT, JOKE, VOCABULARY }
     public enum Status { DRAFT, PENDING_REVIEW, APPROVED, REJECTED }
 
     // Answers and attribution are optional: facts do not need a punchline or an author.
     public record Item(@NotNull Type type, @NotBlank @Size(max = 1000) String body,
-            @Size(max = 1000) String answer, @Size(max = 300) String attribution) {}
+            @Size(max = 1000) String answer, @Size(max = 300) String attribution,
+            String id, @Size(max = 100) String title, @Size(max = 500) String description) {
+        public Item(Type type, String body, String answer, String attribution) {
+            this(type, body, answer, attribution, null, null, null);
+        }
+    }
 
     // New drafts have no submission timestamp or review note until those steps occur.
     public record Revision(int number, String name, String description, List<Item> items,

@@ -1,0 +1,262 @@
+<section aria-labelledby="admin-stacks-title">
+  <p class="eyebrow">KNOWLEDGE MANAGEMENT</p>
+  <h2 id="admin-stacks-title">Stack Management</h2>
+  <p>Manage shared knowledge for free and premium members. Personal copies stay independent.</p>
+  <div class="actions">
+    <button
+      class="button button-small"
+      (click)="startStack(true)"
+      [disabled]="locked() || editing() || confirmation() !== null"
+    >
+      Create stack
+    </button>
+    <button
+      class="button button-small button-outline"
+      (click)="load()"
+      [disabled]="locked() || editing() || confirmation() !== null"
+    >
+      Reload stacks
+    </button>
+  </div>
+  @if (loading()) {
+  <p role="status">Loading stacks...</p>
+  } @if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+  } @if (notice()) {
+  <p class="form-success" role="status">{{ notice() }}</p>
+  } @if (!loading() && !stacks().length) {
+  <p>No knowledge stacks available. Create a stack to get started.</p>
+  }
+
+  <label for="admin-stack-select">Select a stack</label>
+  <select
+    id="admin-stack-select"
+    [ngModel]="selected()?.id ?? ''"
+    (ngModelChange)="select($event)"
+    [disabled]="locked() || editing() || confirmation() !== null"
+  >
+    <option value="">Choose a stack</option>
+    @for (stack of stacks(); track stack.id) {
+    <option [value]="stack.id">
+      {{ latest(stack).name }} — {{ stack.publishedVersion === null ? 'Unpublished' : 'Published' }}
+    </option>
+    }
+  </select>
+
+  @if (stackEditor()) {
+  <form
+    #metadataForm="ngForm"
+    (ngSubmit)="saveStack(metadataForm.valid === true)"
+    class="stack-editor"
+  >
+    <fieldset [disabled]="locked()">
+      <legend>{{ selected() ? 'Edit stack details' : 'Create stack' }}</legend>
+      <label for="admin-stack-name">Name</label>
+      <input
+        id="admin-stack-name"
+        name="stackName"
+        [(ngModel)]="stackName"
+        required
+        maxlength="100"
+        pattern=".*\S.*"
+      />
+      <label for="admin-stack-description">Description (optional)</label>
+      <textarea
+        id="admin-stack-description"
+        name="stackDescription"
+        [(ngModel)]="stackDescription"
+        maxlength="500"
+        rows="3"
+      ></textarea>
+      <div class="actions">
+        <button class="button button-small" type="submit">
+          {{ busy() ? 'Saving...' : 'Save stack' }}
+        </button>
+        <button class="button button-small button-outline" type="button" (click)="cancel()">
+          Cancel
+        </button>
+      </div>
+    </fieldset>
+  </form>
+  } @if (selected(); as stack) {
+  <article class="stack-card">
+    <h3>{{ latest(stack).name }}</h3>
+    <p>{{ latest(stack).description }}</p>
+    <p class="field-hint">
+      {{ items(stack).length }} working items · {{ published(stack).length }} published items · {{
+      stack.versions.length }}/40 saved versions
+    </p>
+    <div class="actions">
+      <button
+        class="button button-small button-outline"
+        (click)="startStack()"
+        [disabled]="locked() || editing() || confirmation() !== null"
+      >
+        Edit stack
+      </button>
+      @if (metadataPending(stack)) {
+      <button
+        class="button button-small"
+        (click)="publish()"
+        [disabled]="locked() || editing() || confirmation() !== null"
+      >
+        Publish stack details
+      </button>
+      }
+      <button
+        class="button button-small button-outline"
+        (click)="requestRemoval()"
+        [disabled]="locked() || editing() || confirmation() !== null"
+      >
+        Delete stack
+      </button>
+    </div>
+  </article>
+
+  <h2 id="admin-content-title">Content Management</h2>
+  <p>
+    Content belongs to <strong>{{ latest(stack).name }}</strong>. Saving keeps changes in draft;
+    Publish makes only the selected item and current stack details available.
+  </p>
+  <button
+    class="button button-small"
+    (click)="startItem()"
+    [disabled]="locked() || editing() || confirmation() !== null || items(stack).length >= 50"
+  >
+    Create content
+  </button>
+
+  @if (itemEditor()) {
+  <form
+    #contentForm="ngForm"
+    (ngSubmit)="saveItem(contentForm.valid === true)"
+    class="stack-editor"
+  >
+    <fieldset [disabled]="locked()">
+      <legend>{{ itemId ? 'Edit content' : 'Create content' }}</legend>
+      <label for="admin-content-title-input">Title</label>
+      <input
+        id="admin-content-title-input"
+        name="title"
+        [(ngModel)]="item.title"
+        required
+        maxlength="100"
+        pattern=".*\S.*"
+      />
+      <label for="admin-content-description">Description (optional)</label>
+      <textarea
+        id="admin-content-description"
+        name="description"
+        [(ngModel)]="item.description"
+        maxlength="500"
+        rows="2"
+      ></textarea>
+      <label for="admin-content-type">Type</label>
+      <select id="admin-content-type" name="type" [(ngModel)]="item.type" required>
+        @for (type of types; track type) {
+        <option [value]="type">{{ type }}</option>
+        }
+      </select>
+      <label for="admin-content-body">Content body</label>
+      <textarea
+        id="admin-content-body"
+        name="body"
+        [(ngModel)]="item.body"
+        required
+        maxlength="1000"
+        pattern="[\s\S]*\S[\s\S]*"
+        rows="4"
+      ></textarea>
+      <label for="admin-content-answer">Answer, definition, or context (optional)</label>
+      <textarea
+        id="admin-content-answer"
+        name="answer"
+        [(ngModel)]="item.answer"
+        maxlength="1000"
+        rows="2"
+      ></textarea>
+      <label for="admin-content-source">Attribution or source (optional)</label>
+      <input
+        id="admin-content-source"
+        name="attribution"
+        [(ngModel)]="item.attribution"
+        maxlength="300"
+      />
+      <div class="actions">
+        <button class="button button-small" type="submit">
+          {{ busy() ? 'Saving...' : 'Save content' }}
+        </button>
+        <button class="button button-small button-outline" type="button" (click)="cancel()">
+          Cancel
+        </button>
+      </div>
+    </fieldset>
+  </form>
+  } @if (!items(stack).length) {
+  <p>No content in this stack. Add content and publish it when ready.</p>
+  } @for (content of items(stack); track content.id) {
+  <article class="stack-card">
+    <h3>{{ content.title || 'Untitled ' + content.type.toLowerCase() }}</h3>
+    <p class="field-hint">{{ content.type }} · {{ status(stack, content) }}</p>
+    @if (content.description) {
+    <p>{{ content.description }}</p>
+    }
+    <p class="content-text">{{ content.body }}</p>
+    @if (content.answer) {
+    <p class="content-text">{{ content.answer }}</p>
+    } @if (content.attribution) {
+    <p class="field-hint">Source: {{ content.attribution }}</p>
+    }
+    <div class="actions">
+      <button
+        class="button button-small button-outline"
+        (click)="startItem(content)"
+        [disabled]="locked() || editing() || confirmation() !== null"
+      >
+        Edit
+      </button>
+      <button
+        class="button button-small"
+        (click)="publish(content)"
+        [disabled]="locked() || editing() || confirmation() !== null || status(stack, content) === 'Published'"
+      >
+        Publish
+      </button>
+      <button
+        class="button button-small button-outline"
+        (click)="requestRemoval(content)"
+        [disabled]="locked() || editing() || confirmation() !== null"
+      >
+        Remove
+      </button>
+    </div>
+  </article>
+  } @if (confirmation(); as pending) {
+  <section
+    class="stack-editor"
+    role="alertdialog"
+    aria-modal="false"
+    aria-labelledby="removal-title"
+    aria-describedby="removal-description"
+  >
+    <h3 id="removal-title">{{ pending.item ? 'Remove content?' : 'Delete stack?' }}</h3>
+    <p id="removal-description">
+      {{ pending.item ? 'This removes the selected item from working and published content. Previous
+      versions remain in history.' : 'This stack and its content will no longer be available to
+      members. Personal copies and history are preserved.' }}
+    </p>
+    <div class="actions">
+      <button class="button button-small" (click)="remove()" [disabled]="locked()">
+        Confirm removal
+      </button>
+      <button
+        class="button button-small button-outline"
+        (click)="cancelRemoval()"
+        [disabled]="locked()"
+      >
+        Cancel
+      </button>
+    </div>
+  </section>
+  } }
+</section>

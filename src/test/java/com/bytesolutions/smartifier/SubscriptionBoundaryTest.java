@@ -30,12 +30,17 @@ class SubscriptionBoundaryTest {
         when(repository.findByEmail("member@example.com")).thenReturn(Optional.of(
                 new Account("1", "Member", "member@example.com", "hash", Account.Role.MEMBER,
                         Instant.EPOCH, phone, Set.of(), premium)));
+        for (String id : new String[] {"everyday-science", "words-and-language", "learning-habits", "new-admin-stack"}) {
+            when(mongo.findById(id, ContentStack.class)).thenReturn(new ContentStack(id, null, true, null, null, 1,
+                    java.util.List.of(new ContentStack.Revision(1, "Shared", "", java.util.List.of(), ContentStack.Status.APPROVED,
+                            Instant.EPOCH, null, null)), 0L));
+        }
     }
 
     @Test
     void everyStackSupportsAtomicSubscribeAndUnsubscribe() {
         accountWithPhone("+14165551234");
-        for (String stack : new String[] {"everyday-science", "words-and-language", "learning-habits"}) {
+        for (String stack : new String[] {"everyday-science", "words-and-language", "learning-habits", "new-admin-stack"}) {
             for (boolean subscribed : new boolean[] {true, false}) {
                 service.subscribe("member@example.com", stack, subscribed);
                 var query = org.mockito.ArgumentCaptor.forClass(Query.class);
@@ -57,7 +62,7 @@ class SubscriptionBoundaryTest {
                     () -> service.subscribe("member@example.com", stack, true));
             assertEquals(400, error.getStatusCode().value());
         }
-        verifyNoInteractions(mongo);
+        verify(mongo, never()).updateFirst(any(Query.class), any(Update.class), eq(Account.class));
     }
 
     @Test

@@ -254,7 +254,7 @@ If **Pay for premium** reports that payments are not configured, the key or pric
 
 ## Free and premium member stacks
 
-Both member tiers can subscribe to the three defaults: Everyday science, Words and language, and Learning habits. Each stack can contain any mixture of `FACT`, `QUOTE`, `JOKE`, and `VOCABULARY` items. Names are starting points, not restrictions on content types. Defaults are seeded with example content on startup, preserving their existing IDs and subscriptions. Restarting never overwrites existing stacks.
+Both member tiers can subscribe to active published shared stacks. The three initial defaults are Everyday science, Words and language, and Learning habits; admins can add more. Each stack can contain any mixture of `FACT`, `QUOTE`, `JOKE`, and `VOCABULARY` items. Names are starting points, not restrictions on content types. Defaults are seeded with example content on startup, preserving their existing IDs and subscriptions. Restarting never overwrites existing stacks.
 
 Premium members have a personal workspace on the same member dashboard:
 
@@ -265,7 +265,17 @@ Premium members have a personal workspace on the same member dashboard:
 
 Only the owning premium member can access a personal stack through these APIs. Free members receive default summaries, without their content or personal editing controls. Server-side checks enforce membership, ownership, session authentication, and CSRF protection. New and legacy accounts default to free; registration cannot grant premium access. Conflicting saves return an error instead of overwriting another saved version.
 
-The admin dashboard and approval/rejection controls are intentionally deferred. Submitted versions remain pending until the future review workflow is implemented. Premium members can subscribe to their own saved personal stacks, including drafts, using the same subscription controls as defaults. Subscriptions stay private and require a mobile number; subscribing does not publish a stack or submit it for approval. Other members' personal stacks cannot be subscribed to. Text delivery is not implemented yet.
+Admin stack/content management is available on the admin dashboard; reviewing member submissions remains deferred. Submitted personal versions remain pending until that future review workflow is implemented. Premium members can subscribe to their own saved personal stacks, including drafts, using the same subscription controls as defaults. Subscriptions stay private and require a mobile number; subscribing does not publish a stack or submit it for approval. Other members' personal stacks cannot be subscribed to. Text delivery is not implemented yet.
+
+### Admin knowledge management
+
+Sign in as an admin at `/login`, then use **Stack Management** on `/admin/dashboard` to create, select, edit, or delete shared stacks. New stacks begin empty and unpublished. Under **Content Management**, create or edit content with a title, optional description, type, body, optional answer/context, and attribution. Content belongs to the selected stack.
+
+**Save** retains draft changes. **Publish** publishes only the selected saved item and the current stack name/description; unrelated draft items and edits remain unpublished. **Publish stack details** publishes changed stack metadata without publishing draft items. Both free and premium members can subscribe to active published shared stacks; premium members retain their independent-copy and personal-editing features. Stripe and premium activation are unchanged.
+
+Removal requires confirmation. Removing content takes it out of both working and published content while retaining historical snapshots. Removing the last published item makes the stack unavailable until content is published again. Deleting a stack archives it, preserving history and independent personal copies; seeded stacks therefore stay removed across restarts. Existing subscription IDs may remain stored but unavailable stacks cannot receive new subscriptions or copies; members can still stop an existing subscription. Future message delivery must check current availability.
+
+All admin APIs use `/api/admin/stacks`, require ADMIN authorization, and require CSRF on mutations. Updates include the loaded `expectedRevision`; conflicting edits return `409` and require reloading. Stacks retain the existing 50-item/40-version limits; publishing generally stores a published snapshot plus a working draft and consumes two versions. Stack archival remains possible at the history limit. Legacy content without IDs/titles remains readable; IDs are persisted when the admin next saves the stack. Admin editing requires a title, without imposing new required fields on member requests. No database migration is required.
 
 ### Preview premium locally
 
