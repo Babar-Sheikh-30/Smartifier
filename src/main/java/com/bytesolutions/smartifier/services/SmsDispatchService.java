@@ -12,6 +12,8 @@ import com.bytesolutions.smartifier.models.SmsDelivery;
 import com.bytesolutions.smartifier.repositories.AccountRepository;
 import com.bytesolutions.smartifier.repositories.SmsPreferenceRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -22,6 +24,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SmsDispatchService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(SmsDispatchService.class);
 
     private static final ZoneId SMS_TIME_ZONE =
             ZoneId.of("America/Toronto");
@@ -131,6 +136,12 @@ public class SmsDispatchService {
 
         } catch (RuntimeException exception) {
 
+            log.error(
+                    "SMS dispatch failed for account {}: {}",
+                    accountId,
+                    exception.getMessage()
+            );
+
             // Do not automatically retry: the provider may have
             // accepted the message before an error was returned.
             updateStatus(reserved, SmsDelivery.Status.FAILED);
@@ -200,3 +211,4 @@ public class SmsDispatchService {
         mongo.updateFirst(query, update, SmsDelivery.class);
     }
 }
+
