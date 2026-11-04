@@ -1,3 +1,4 @@
+
 services:
   mongo:
     image: mongo:7
@@ -22,6 +23,19 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_CHECKOUT_MODE: ${STRIPE_CHECKOUT_MODE:-payment}
       SMARTIFIER_PUBLIC_URL: ${SMARTIFIER_PUBLIC_URL:-http://localhost:8080}
+
+      # Twilio SMS configuration
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+
+      # SMS sending and scheduling remain disabled by default.
+      SMARTIFIER_SMS_ENABLED: ${SMARTIFIER_SMS_ENABLED:-false}
+      SMARTIFIER_SMS_SCHEDULER_ENABLED: ${SMARTIFIER_SMS_SCHEDULER_ENABLED:-false}
+
+      # Public HTTPS URL used to verify Twilio webhook signatures.
+      SMARTIFIER_SMS_WEBHOOK_URL: ${SMARTIFIER_SMS_WEBHOOK_URL:-}
+
     depends_on:
       - mongo
 

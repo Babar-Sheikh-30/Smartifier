@@ -1,3 +1,4 @@
+
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -14,9 +15,15 @@ export interface Profile {
   premium: boolean;
 }
 
+// SMS preference returned by the backend.
+export interface SmsSettings {
+  optedIn: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+
   // No profile is assumed until the server confirms the current session.
   readonly user = signal<Profile | null>(null);
 
@@ -77,6 +84,24 @@ export class AuthService {
     this.user.set(user);
   }
 
+  // Retrieve the member's current SMS preference.
+  async getSmsSettings(): Promise<SmsSettings> {
+    return firstValueFrom(
+      this.http.get<SmsSettings>('/api/member/sms')
+    );
+  }
+
+  // Enable or disable SMS notifications.
+  async updateSmsSettings(optedIn: boolean): Promise<SmsSettings> {
+    return firstValueFrom(
+      this.http.post<SmsSettings>(
+        '/api/member/sms',
+        { optedIn },
+        { headers: await this.headers() }
+      )
+    );
+  }
+
   async createCheckout(): Promise<string> {
     const checkout = await firstValueFrom(
       this.http.post<{ url: string }>(
@@ -100,7 +125,9 @@ export class AuthService {
   }
 
   async logout() {
-    await firstValueFrom(this.http.post('/api/auth/logout', {}, { headers: await this.headers() }));
+    await firstValueFrom(
+      this.http.post('/api/auth/logout', {}, { headers: await this.headers() })
+    );
     this.user.set(null);
   }
 

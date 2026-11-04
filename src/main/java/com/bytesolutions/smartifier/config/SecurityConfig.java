@@ -1,3 +1,4 @@
+
 package com.bytesolutions.smartifier.config;
 
 import org.springframework.context.annotation.Bean;
@@ -17,12 +18,16 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Stripe has no browser session or CSRF token; its webhook uses signature verification.
-        http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/payments/stripe/webhook"))
+        // Stripe and Twilio have no browser session or CSRF token.
+        // Their webhook endpoints must verify provider signatures.
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(
+                    "/api/payments/stripe/webhook",
+                    "/api/sms/twilio/webhook"))
             .authorizeHttpRequests(access -> access
                 .requestMatchers("/", "/login", "/register", "/app/**", "/favicon.ico", "/error",
                         "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
-                        "/api/payments/stripe/webhook").permitAll()
+                        "/api/payments/stripe/webhook",
+                        "/api/sms/twilio/webhook").permitAll()
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/member/**", "/api/member/**").hasRole("MEMBER")
                 .anyRequest().authenticated())

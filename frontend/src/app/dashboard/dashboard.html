@@ -56,6 +56,62 @@
         {{ saving() === 'phone' ? 'Saving...' : 'Save number' }}
       </button>
     </form>
+
+    <!-- SMS Notifications: new member preference section -->
+    <section class="sms-notifications" aria-labelledby="sms-title">
+      <h2 id="sms-title">SMS Notifications</h2>
+      <p class="field-hint">
+        Choose whether you want to receive recurring educational text messages
+        from your subscribed Smartifier knowledge stacks.
+      </p>
+
+      @if (smsLoading()) {
+      <p class="field-hint" role="status">Loading SMS preferences...</p>
+      } @else {
+      <form (ngSubmit)="saveSmsSettings()">
+        <label for="sms-opt-in">
+          <input
+            id="sms-opt-in"
+            name="smsOptedIn"
+            type="checkbox"
+            [ngModel]="smsOptedIn()"
+            (ngModelChange)="smsOptedIn.set($event)"
+            [disabled]="smsSaving() || busy()"
+          />
+          I agree to receive recurring Smartifier educational SMS messages
+          at my registered mobile number.
+        </label>
+
+        <p class="field-hint">
+          Message frequency may vary. Message and data rates may apply.
+          You can disable notifications here at any time.
+        </p>
+
+        <p class="field-hint">
+          SMS delivery is currently being set up. Saving this preference
+          will not send any messages yet.
+        </p>
+
+        <button
+          class="button button-small"
+          type="submit"
+          [disabled]="smsSaving() || busy()"
+        >
+          {{ smsSaving() ? 'Saving...' : 'Save SMS preference' }}
+        </button>
+      </form>
+      }
+
+      @if (smsNotice()) {
+      <p class="form-success" role="status">{{ smsNotice() }}</p>
+      }
+
+      @if (smsError()) {
+      <p class="form-error" role="alert">{{ smsError() }}</p>
+      }
+    </section>
+    <!-- End SMS Notifications -->
+
     @if (!user.premium) {
     <section class="premium-banner" aria-labelledby="premium-title">
       <div>
