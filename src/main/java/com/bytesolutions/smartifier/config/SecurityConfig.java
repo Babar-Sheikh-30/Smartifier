@@ -10,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
     PasswordEncoder passwordEncoder() {
         // Store the encoder identifier with each hash so password formats can evolve later.
@@ -18,16 +19,14 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Stripe and Twilio have no browser session or CSRF token.
-        // Their webhook endpoints must verify provider signatures.
+        // Stripe has no browser session or CSRF token.
+        // Its webhook endpoint must verify the provider signature.
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
-                    "/api/payments/stripe/webhook",
-                    "/api/sms/twilio/webhook"))
+                    "/api/payments/stripe/webhook"))
             .authorizeHttpRequests(access -> access
                 .requestMatchers("/", "/login", "/register", "/app/**", "/favicon.ico", "/error",
                         "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
-                        "/api/payments/stripe/webhook",
-                        "/api/sms/twilio/webhook").permitAll()
+                        "/api/payments/stripe/webhook").permitAll()
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/member/**", "/api/member/**").hasRole("MEMBER")
                 .anyRequest().authenticated())

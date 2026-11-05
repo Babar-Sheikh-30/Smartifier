@@ -97,7 +97,7 @@ public class SmsDeliveryService {
      * Reserves the next eligible message in MongoDB.
      *
      * Skips content that has already been reserved.
-     * Does not contact Twilio or send an SMS.
+     * Does not contact the SMS provider or send an SMS.
      */
     public Optional<ReservedMessage> reserveNextMessage(Account account) {
 
