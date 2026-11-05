@@ -1,3 +1,4 @@
+
 services:
   mongo:
     image: mongo:7
@@ -22,6 +23,11 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_CHECKOUT_MODE: ${STRIPE_CHECKOUT_MODE:-payment}
       SMARTIFIER_PUBLIC_URL: ${SMARTIFIER_PUBLIC_URL:-http://localhost:8080}
+
+      # SMS sending and scheduling remain disabled by default.
+      SMARTIFIER_SMS_ENABLED: ${SMARTIFIER_SMS_ENABLED:-false}
+      SMARTIFIER_SMS_SCHEDULER_ENABLED: ${SMARTIFIER_SMS_SCHEDULER_ENABLED:-false}
+
     depends_on:
       - mongo
 

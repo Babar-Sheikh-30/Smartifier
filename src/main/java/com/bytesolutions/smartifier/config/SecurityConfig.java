@@ -1,3 +1,4 @@
+
 package com.bytesolutions.smartifier.config;
 
 import org.springframework.context.annotation.Bean;
@@ -9,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
     PasswordEncoder passwordEncoder() {
         // Store the encoder identifier with each hash so password formats can evolve later.
@@ -17,8 +19,10 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Stripe has no browser session or CSRF token; its webhook uses signature verification.
-        http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/payments/stripe/webhook"))
+        // Stripe has no browser session or CSRF token.
+        // Its webhook endpoint must verify the provider signature.
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(
+                    "/api/payments/stripe/webhook"))
             .authorizeHttpRequests(access -> access
                 .requestMatchers("/", "/login", "/register", "/app/**", "/favicon.ico", "/error",
                         "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
