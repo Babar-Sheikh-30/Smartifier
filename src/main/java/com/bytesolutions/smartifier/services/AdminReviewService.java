@@ -55,18 +55,16 @@ public class AdminReviewService {
         }
         if (stack.revision() == null || stack.revision() != expectedRevision) throw conflict();
         var versions = new ArrayList<>(stack.versions());
-        int index = -1;
-        for (int i = 0; i < versions.size(); i++) if (versions.get(i).number() == number) index = i;
+        int index = stack.versionIndex(number);
         if (index < 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Submitted version not found.");
         var submitted = versions.get(index);
         if (submitted.status() != Status.PENDING_REVIEW) throw conflict();
-        versions.set(index, new Revision(submitted.number(), submitted.name(), submitted.description(), submitted.items(),
-                approved ? Status.APPROVED : Status.REJECTED, submitted.createdAt(), submitted.submittedAt(),
+        versions.set(index, submitted.withReview(
+                approved ? Status.APPROVED : Status.REJECTED, submitted.submittedAt(),
                 note == null || note.isBlank() ? null : note.strip()));
         // A decision updates only this submission. Newer drafts, ownership and publication remain intact.
         try {
-            stacks.save(new ContentStack(stack.id(), stack.ownerId(), false, stack.sourceStackId(), stack.sourceVersion(),
-                    stack.publishedVersion(), versions, stack.revision(), stack.archived()));
+            stacks.save(stack.withVersions(versions));
         } catch (OptimisticLockingFailureException exception) { throw conflict(); }
     }
 

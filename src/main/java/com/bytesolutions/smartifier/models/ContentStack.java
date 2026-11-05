@@ -42,6 +42,10 @@ public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
     public record Revision(int number, String name, String description, List<Item> items,
             Status status, Instant createdAt, Instant submittedAt, String reviewNote) {
         public Revision { items = List.copyOf(items); }
+
+        public Revision withReview(Status newStatus, Instant submissionTime, String note) {
+            return new Revision(number, name, description, items, newStatus, createdAt, submissionTime, note);
+        }
     }
 
     public record Edit(@NotBlank @Size(max = 100) String name,
@@ -51,4 +55,18 @@ public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
 
     // Saves append versions in order, so the last entry is the current working version.
     public Revision latest() { return versions.getLast(); }
+
+    public ContentStack withVersions(List<Revision> updatedVersions) {
+        return new ContentStack(id, ownerId, defaultStack, sourceStackId, sourceVersion,
+                publishedVersion, updatedVersions, revision, archived);
+    }
+
+    // Return the position, not the content version number. The caller supplies its own error response.
+    public int versionIndex(int number) {
+        int index = -1;
+        for (int i = 0; i < versions.size(); i++) {
+            if (versions.get(i).number() == number) index = i;
+        }
+        return index;
+    }
 }

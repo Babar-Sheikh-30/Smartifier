@@ -71,11 +71,42 @@ class StripeWebhookServiceTest {
     void rejectsMissingForgedExpiredFutureAndTamperedSignatures() throws Exception {
         var body = event("checkout.session.completed", "paid", "price_premium");
         long now = Instant.now().getEpochSecond();
-        for (String signature : new String[] {null, "t=1,v1=bad", sign(body, now - 600),
+        for (String signature : new String[] {null, "", "t=invalid,v1=bad", "t=1,v1", "v1=bad",
+                "t=1,v1=bad", sign(body, now - 600),
                 sign(body, now + 600), sign("{}".getBytes(StandardCharsets.UTF_8), now)}) {
             assertEquals(400, assertThrows(ResponseStatusException.class,
                     () -> service.receive(body, signature)).getStatusCode().value());
         }
+        verifyNoInteractions(mongo);
+    }
+
+    @Test
+    void acceptsRotatedSignaturesAndOriginalUtf8Payload() throws Exception {
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(Account.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+        var body = ("""
+                {"type":"checkout.session.completed","description":"Premium — café ☕",
+                "data":{"object":{"payment_status":"paid","client_reference_id":"john@abc.com",
+                "metadata":{"smartifier_price_id":"price_premium"}}}}
+                """).getBytes(StandardCharsets.UTF_8);
+        var signature = sign(body, Instant.now().getEpochSecond())
+                .replace(",v1=", ", v1=invalid, v1=");
+
+        service.receive(body, signature);
+
+        verify(mongo).updateFirst(any(Query.class), any(Update.class), eq(Account.class));
+    }
+
+    @Test
+    void rejectsSignedInvalidJsonWithoutUpdatingAccount() throws Exception {
+        var body = "{invalid".getBytes(StandardCharsets.UTF_8);
+        var signature = sign(body, Instant.now().getEpochSecond());
+
+        var error = assertThrows(ResponseStatusException.class,
+                () -> service.receive(body, signature));
+
+        assertEquals(400, error.getStatusCode().value());
+        assertEquals("Invalid webhook payload.", error.getReason());
         verifyNoInteractions(mongo);
     }
 

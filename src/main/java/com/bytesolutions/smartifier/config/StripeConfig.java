@@ -1,20 +1,19 @@
 package com.bytesolutions.smartifier.config;
 
-import java.net.http.HttpClient;
-import java.time.Duration;
+import com.stripe.StripeClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.web.client.RestClient;
+import org.springframework.context.annotation.Lazy;
 
 @Configuration
 public class StripeConfig {
     @Bean
-    RestClient.Builder stripeRestClientBuilder() {
+    @Lazy
+    StripeClient stripeClient(@Value("${smartifier.stripe.secret-key:}") String secretKey) {
         // Bound connection and response waits so a slow payment provider cannot hang checkout.
-        var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10)).build());
-        factory.setReadTimeout(Duration.ofSeconds(20));
-        return RestClient.builder().requestFactory(factory);
+        var builder = StripeClient.builder().setConnectTimeout(10_000).setReadTimeout(20_000)
+                .setMaxNetworkRetries(0);
+        return builder.setApiKey(secretKey).build();
     }
 }

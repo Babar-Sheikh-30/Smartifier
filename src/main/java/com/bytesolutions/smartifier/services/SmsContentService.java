@@ -24,21 +24,7 @@ public class SmsContentService {
 
     // Existing method preserved for compatibility.
     public List<Item> eligibleItems(Account account) {
-        if (account == null || account.role() != Account.Role.MEMBER
-                || account.subscriptions().isEmpty()) {
-            return List.of();
-        }
-
-        return account.subscriptions().stream()
-                .map(stacks::findById)
-                .flatMap(java.util.Optional::stream)
-                .filter(stack -> !stack.archived())
-                .filter(stack -> stack.publishedVersion() != null)
-                .filter(stack -> stack.defaultStack()
-                        || (account.premium()
-                        && Objects.equals(stack.ownerId(), account.id())))
-                .flatMap(stack -> publishedItems(stack).stream())
-                .toList();
+        return eligibleContent(account).stream().map(EligibleContent::item).toList();
     }
 
     private List<Item> publishedItems(ContentStack stack) {

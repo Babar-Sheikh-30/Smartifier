@@ -1,12 +1,11 @@
 package com.bytesolutions.smartifier.services;
 
 import com.bytesolutions.smartifier.models.Account;
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.net.Webhook;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.HexFormat;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -67,28 +66,20 @@ public class StripeWebhookService {
     private void verify(byte[] body, String signature) {
         try {
             if (signature == null) throw new IllegalArgumentException();
-            String timestamp = null;
-            for (String part : signature.split(",")) {
-                if (part.trim().startsWith("t=")) timestamp = part.trim().substring(2);
+            String header = String.join(",", Arrays.stream(signature.split(","))
+                    .map(String::trim).toList());
+            // The SDK verifies the signature and rejects timestamps older than five minutes.
+            Webhook.Signature.verifyHeader(new String(body, StandardCharsets.UTF_8), header,
+                    secret, Webhook.DEFAULT_TOLERANCE);
+            // Preserve our future-timestamp check; the SDK only enforces the oldest allowed time.
+            long sent = Arrays.stream(header.split(",")).filter(part -> part.startsWith("t="))
+                    .mapToLong(part -> Long.parseLong(part.substring(2))).findFirst().orElseThrow();
+            if (sent > Instant.now().getEpochSecond() + Webhook.DEFAULT_TOLERANCE) {
+                throw new IllegalArgumentException();
             }
-            long sent = Long.parseLong(timestamp);
-            long now = Instant.now().getEpochSecond();
-            // Limit replay of captured requests to a five-minute timestamp window.
-            if (sent < now - 300 || sent > now + 300) throw new IllegalArgumentException();
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            // Stripe signs the timestamp, a period, and the unmodified request body.
-            mac.update((timestamp + ".").getBytes(StandardCharsets.UTF_8));
-            byte[] expected = mac.doFinal(body);
-            // Accept any matching v1 signature to support signing secret rotation.
-            for (String part : signature.split(",")) {
-                part = part.trim();
-                if (part.startsWith("v1=") && MessageDigest.isEqual(expected,
-                        HexFormat.of().parseHex(part.substring(3)))) return;
-            }
-        } catch (Exception exception) {
-            // Never expose signing secrets, signatures, or payment payloads.
+        } catch (SignatureVerificationException | RuntimeException exception) {
+            // Never expose provider exception details, signatures, or payment payloads.
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid webhook signature.");
         }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid webhook signature.");
     }
 }

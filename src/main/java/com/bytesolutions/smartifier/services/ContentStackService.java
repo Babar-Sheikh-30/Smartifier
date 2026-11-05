@@ -108,16 +108,14 @@ public class ContentStackService {
         var versions = new ArrayList<>(stack.versions());
         var latest = stack.latest();
         // Submission changes the saved draft's status without creating another content version.
-        versions.set(versions.size() - 1, new Revision(latest.number(), latest.name(), latest.description(),
-                latest.items(), Status.PENDING_REVIEW, latest.createdAt(), Instant.now(), null));
+        versions.set(versions.size() - 1, latest.withReview(Status.PENDING_REVIEW, Instant.now(), null));
         return persist(stack, versions);
     }
 
     public ContentStack cancelSubmission(String email, String id, int number, long expectedRevision) {
         var stack = owned(email, id, expectedRevision);
         var versions = new ArrayList<>(stack.versions());
-        int index = -1;
-        for (int i = 0; i < versions.size(); i++) if (versions.get(i).number() == number) index = i;
+        int index = stack.versionIndex(number);
         if (index < 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Submitted version not found.");
         }
@@ -125,8 +123,7 @@ public class ContentStackService {
         if (submitted.status() != Status.PENDING_REVIEW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This request is no longer awaiting approval. Reload your stacks.");
         }
-        versions.set(index, new Revision(submitted.number(), submitted.name(), submitted.description(),
-                submitted.items(), Status.DRAFT, submitted.createdAt(), null, null));
+        versions.set(index, submitted.withReview(Status.DRAFT, null, null));
         return persist(stack, versions);
     }
 
@@ -149,8 +146,7 @@ public class ContentStackService {
 
     private ContentStack persist(ContentStack stack, List<Revision> versions) {
         try {
-            return stacks.save(new ContentStack(stack.id(), stack.ownerId(), false, stack.sourceStackId(),
-                    stack.sourceVersion(), stack.publishedVersion(), versions, stack.revision()));
+            return stacks.save(stack.withVersions(versions));
         } catch (OptimisticLockingFailureException exception) {
             // Another request may have saved after the initial revision check.
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has changed. Reload your stacks before saving.");
