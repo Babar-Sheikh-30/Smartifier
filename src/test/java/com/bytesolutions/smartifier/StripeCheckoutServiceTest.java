@@ -1,4 +1,4 @@
-﻿package com.bytesolutions.smartifier;
+package com.bytesolutions.smartifier;
 
 import com.bytesolutions.smartifier.services.StripeCheckoutService;
 import com.bytesolutions.smartifier.config.StripeConfig;
