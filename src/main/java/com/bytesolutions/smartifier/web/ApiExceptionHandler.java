@@ -1,6 +1,6 @@
 package com.bytesolutions.smartifier.web;
 
-import com.bytesolutions.smartifier.content.ContentStackController;
+import com.bytesolutions.smartifier.content.controllers.ContentStackController;
 
 import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;

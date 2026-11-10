@@ -1,6 +1,6 @@
 package com.bytesolutions.smartifier.payment;
 
-import com.bytesolutions.smartifier.account.Account;
+import com.bytesolutions.smartifier.account.models.Account;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.net.Webhook;
 import java.nio.charset.StandardCharsets;

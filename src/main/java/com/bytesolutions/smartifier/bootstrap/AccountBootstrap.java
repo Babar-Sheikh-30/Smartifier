@@ -1,9 +1,9 @@
 package com.bytesolutions.smartifier.bootstrap;
 
-import com.bytesolutions.smartifier.account.Account;
-import com.bytesolutions.smartifier.account.Account.Role;
-import com.bytesolutions.smartifier.account.AccountRepository;
-import com.bytesolutions.smartifier.account.AccountService;
+import com.bytesolutions.smartifier.account.models.Account;
+import com.bytesolutions.smartifier.account.models.Account.Role;
+import com.bytesolutions.smartifier.account.repositories.AccountRepository;
+import com.bytesolutions.smartifier.account.services.AccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

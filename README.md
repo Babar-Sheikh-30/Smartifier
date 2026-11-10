@@ -110,17 +110,19 @@ MongoDB integration tests use uniquely named `smartifier_auth_test_*` and `smart
 Smartifier/
   frontend/src/app/          Angular pages and services grouped by feature
   src/main/java/com/bytesolutions/smartifier/
-    account/                Accounts, authentication, and subscriptions
-    content/                Content stacks, publishing, and reviews
+    account/                controllers/, models/, repositories/, services/
+    content/                controllers/, models/, repositories/, services/
     payment/                Stripe checkout and webhooks
-    sms/                    SMS preferences, scheduling, and delivery
+    sms/                    controllers/, models/, repositories/, services/
     web/                    HTML shell and shared API error handling
     config/                 Shared security and payment configuration
     bootstrap/              Initial accounts and content
     SmartifierApplication.java
   src/main/resources/       Spring configuration and HTML shell
   src/test/java/com/bytesolutions/smartifier/
-    account/ content/ payment/ sms/ web/   Tests grouped like application code
+    <feature>/unit/         Isolated service, controller, and mapping tests
+    <feature>/validation/   Request validation and input boundary tests
+    <feature>/integration/  Full application tests using MongoDB
   scripts/                  Local startup and Docker admin setup
   docs/                     Detailed feature and setup guides
   .mvn/                     Maven wrapper configuration
@@ -130,6 +132,8 @@ Smartifier/
   Dockerfile                Application image build
   docker-compose*.yml       Container services and local overrides
 ```
+
+Larger backend features separate controllers, models, repositories, and services. Small features such as payment and web stay flat. Tests are grouped by feature and then unit, validation, or integration; only populated folders are created.
 
 MongoDB document type aliases retain their original stored names when Java packages move, so existing data remains compatible.
 
