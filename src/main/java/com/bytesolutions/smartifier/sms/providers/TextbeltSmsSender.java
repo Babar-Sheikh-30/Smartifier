@@ -1,4 +1,4 @@
-package com.bytesolutions.smartifier.sms.services;
+package com.bytesolutions.smartifier.sms.providers;
 
 import java.util.Map;
 

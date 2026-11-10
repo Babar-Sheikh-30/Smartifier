@@ -1,6 +1,6 @@
 package com.bytesolutions.smartifier.sms.unit;
 
-import com.bytesolutions.smartifier.sms.services.SmsMessageFormatter;
+import com.bytesolutions.smartifier.sms.formatting.SmsMessageFormatter;
 
 import com.bytesolutions.smartifier.content.models.ContentStack.Item;
 import com.bytesolutions.smartifier.content.models.ContentStack.Type;

@@ -1,4 +1,6 @@
-package com.bytesolutions.smartifier.sms.services;
+package com.bytesolutions.smartifier.sms.scheduling;
+
+import com.bytesolutions.smartifier.sms.services.SmsDispatchService;
 
 import com.bytesolutions.smartifier.account.models.Account;
 import com.bytesolutions.smartifier.account.repositories.AccountRepository;

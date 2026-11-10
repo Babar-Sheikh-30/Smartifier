@@ -1,4 +1,4 @@
-package com.bytesolutions.smartifier.sms.services;
+package com.bytesolutions.smartifier.sms.formatting;
 
 import com.bytesolutions.smartifier.content.models.ContentStack.Item;
 

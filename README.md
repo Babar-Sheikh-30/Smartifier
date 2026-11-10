@@ -114,6 +114,9 @@ Smartifier/
     content/                controllers/, models/, repositories/, services/
     payment/                Stripe checkout and webhooks
     sms/                    controllers/, models/, repositories/, services/
+      providers/            SMS sender contract and Textbelt integration
+      scheduling/           Scheduled delivery triggers
+      formatting/           Message text formatting
     web/                    HTML shell and shared API error handling
     config/                 Shared security and payment configuration
     bootstrap/              Initial accounts and content

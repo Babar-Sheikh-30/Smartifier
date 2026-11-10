@@ -1,5 +1,7 @@
 package com.bytesolutions.smartifier.sms.services;
 
+import com.bytesolutions.smartifier.sms.providers.SmsSender;
+
 import com.bytesolutions.smartifier.sms.models.SmsDailyClaim;
 import com.bytesolutions.smartifier.sms.models.SmsDelivery;
 import com.bytesolutions.smartifier.sms.repositories.SmsPreferenceRepository;

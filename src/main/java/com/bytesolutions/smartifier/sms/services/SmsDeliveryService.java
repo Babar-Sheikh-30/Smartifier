@@ -1,5 +1,7 @@
 package com.bytesolutions.smartifier.sms.services;
 
+import com.bytesolutions.smartifier.sms.formatting.SmsMessageFormatter;
+
 import com.bytesolutions.smartifier.sms.repositories.SmsPreferenceRepository;
 
 import java.util.Comparator;
