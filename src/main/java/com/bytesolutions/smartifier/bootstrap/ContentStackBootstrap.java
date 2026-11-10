@@ -2,8 +2,8 @@ package com.bytesolutions.smartifier.bootstrap;
 
 import java.time.Instant;
 import java.util.List;
-import com.bytesolutions.smartifier.models.ContentStack;
-import com.bytesolutions.smartifier.models.ContentStack.*;
+import com.bytesolutions.smartifier.content.ContentStack;
+import com.bytesolutions.smartifier.content.ContentStack.*;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.mongodb.core.MongoTemplate;

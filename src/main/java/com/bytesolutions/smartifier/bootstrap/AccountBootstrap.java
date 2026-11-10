@@ -1,9 +1,9 @@
 package com.bytesolutions.smartifier.bootstrap;
 
-import com.bytesolutions.smartifier.models.Account;
-import com.bytesolutions.smartifier.models.Account.Role;
-import com.bytesolutions.smartifier.repositories.AccountRepository;
-import com.bytesolutions.smartifier.services.AccountService;
+import com.bytesolutions.smartifier.account.Account;
+import com.bytesolutions.smartifier.account.Account.Role;
+import com.bytesolutions.smartifier.account.AccountRepository;
+import com.bytesolutions.smartifier.account.AccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +39,7 @@ public class AccountBootstrap implements ApplicationRunner {
         mongo.indexOps(Account.class).createIndex(new Index().on("email", Sort.Direction.ASC)
                 .unique().named("unique_account_email"));
         if (email.isBlank()) {
-            log.info("To create the initial admin, run .\\start-local.ps1 -SetupAdmin.");
+            log.info("To create the initial admin, run .\\scripts\\start-local.ps1 -SetupAdmin.");
             return;
         }
         String normalized = AccountService.normalizeEmail(email);
