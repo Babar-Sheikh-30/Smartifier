@@ -20,7 +20,8 @@ import static org.mockito.Mockito.*;
 class AdminReviewServiceTest {
     private final ContentStackRepository stacks = mock(ContentStackRepository.class);
     private final AccountRepository accounts = mock(AccountRepository.class);
-    private final AdminReviewService service = new AdminReviewService(stacks, accounts);
+    private final AdminReviewService service = new AdminReviewService(stacks, accounts,
+            new com.bytesolutions.smartifier.content.services.AdminContentService(stacks));
     private ContentStack stack;
     private final List<Item> items = List.of(new Item(Type.FACT, "Submitted fact", "", ""));
 

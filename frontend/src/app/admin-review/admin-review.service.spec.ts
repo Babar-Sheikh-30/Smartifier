@@ -45,4 +45,15 @@ describe('AdminReviewService', () => {
     request.flush(null);
     await pending;
   });
+
+  it('routes shared contributions through the existing review endpoint with revision and CSRF', async () => {
+    const entry = { stackId: 'shared', contributionId: 'c/1', revision: 9 } as ReviewEntry;
+    const pending = service.decide(entry, true, ' Accepted ');
+    await Promise.resolve();
+    const request = http.expectOne('/api/admin/reviews/shared/contributions/c%2F1/decision');
+    expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('token');
+    expect(request.request.body).toEqual({ expectedRevision: 9, approved: true, note: 'Accepted' });
+    request.flush(null);
+    await pending;
+  });
 });

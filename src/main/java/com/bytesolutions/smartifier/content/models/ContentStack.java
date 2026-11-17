@@ -16,10 +16,16 @@ import jakarta.validation.constraints.*;
 // counter, separate from the content version numbers kept in versions.
 public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
         String sourceStackId, Integer sourceVersion, Integer publishedVersion,
-        List<Revision> versions, @Version Long revision, Boolean archived) {
+        List<Revision> versions, @Version Long revision, Boolean archived, List<Contribution> contributions) {
     public ContentStack {
         versions = List.copyOf(versions);
         archived = Boolean.TRUE.equals(archived);
+        contributions = contributions == null ? List.of() : List.copyOf(contributions);
+    }
+
+    public ContentStack(String id, String ownerId, boolean defaultStack, String sourceStackId,
+            Integer sourceVersion, Integer publishedVersion, List<Revision> versions, Long revision, Boolean archived) {
+        this(id, ownerId, defaultStack, sourceStackId, sourceVersion, publishedVersion, versions, revision, archived, List.of());
     }
 
     // Keep existing member callers and documents compatible with active stacks.
@@ -30,6 +36,15 @@ public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
 
     public enum Type { QUOTE, FACT, JOKE, VOCABULARY }
     public enum Status { DRAFT, PENDING_REVIEW, APPROVED, REJECTED }
+
+    // Embedded in the destination so acceptance and draft insertion share one optimistic write.
+    public record Contribution(String id, String contributorId, Item item, Instant submittedAt,
+            Status status, Instant reviewedAt, String reviewerId, String reviewNote) {}
+
+    public ContentStack withContributions(List<Contribution> updated) {
+        return new ContentStack(id, ownerId, defaultStack, sourceStackId, sourceVersion,
+                publishedVersion, versions, revision, archived, updated);
+    }
 
     // Answers and attribution are optional: facts do not need a punchline or an author.
     public record Item(@NotNull Type type, @NotBlank @Size(max = 1000) String body,
@@ -60,7 +75,7 @@ public record ContentStack(@Id String id, String ownerId, boolean defaultStack,
 
     public ContentStack withVersions(List<Revision> updatedVersions) {
         return new ContentStack(id, ownerId, defaultStack, sourceStackId, sourceVersion,
-                publishedVersion, updatedVersions, revision, archived);
+                publishedVersion, updatedVersions, revision, archived, contributions);
     }
 
     // Return the position, not the content version number. The caller supplies its own error response.

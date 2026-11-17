@@ -10,6 +10,8 @@ describe('Personal stack removal and approval cancellation', () => {
   let fixture: ComponentFixture<MemberStacksComponent>;
   let stack: PersonalStack;
   let api: {
+    contributions: ReturnType<typeof vi.fn>;
+    contribute: ReturnType<typeof vi.fn>;
     defaults: ReturnType<typeof vi.fn>;
     personal: ReturnType<typeof vi.fn>;
     cancelSubmission: ReturnType<typeof vi.fn>;
@@ -48,6 +50,8 @@ describe('Personal stack removal and approval cancellation', () => {
       premium: true
     });
     api = {
+      contributions: vi.fn().mockResolvedValue([]),
+      contribute: vi.fn(),
       defaults: vi.fn().mockResolvedValue([]),
       personal: vi.fn().mockResolvedValue([stack]),
       cancelSubmission: vi.fn(),
@@ -59,7 +63,24 @@ describe('Personal stack removal and approval cancellation', () => {
       imports: [MemberStacksComponent],
       providers: [
         provideZonelessChangeDetection(),
-        { provide: AuthService, useValue: { user } },
+        {
+          provide: AuthService,
+          useValue: {
+            user,
+            subscribe: vi.fn(async (id: string, subscribed: boolean) => {
+              user.update((u) =>
+                u
+                  ? {
+                      ...u,
+                      subscriptions: subscribed
+                        ? [...u.subscriptions, id]
+                        : u.subscriptions.filter((s) => s !== id)
+                    }
+                  : null
+              );
+            })
+          }
+        },
         { provide: StackService, useValue: api }
       ]
     }).compileComponents();
@@ -68,6 +89,78 @@ describe('Personal stack removal and approval cancellation', () => {
     await vi.waitFor(() => expect(fixture.componentInstance.loading()).toBe(false));
     await fixture.whenStable();
     fixture.detectChanges();
+  });
+
+  it('uses daily text wording and preserves the existing enrollment request', async () => {
+    fixture.componentInstance.defaults.set([
+      { id: 'shared', name: 'Science', description: '', itemCount: 1 }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Get Daily Text');
+    await fixture.componentInstance.toggle('shared');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Stop Daily Texts');
+    expect(fixture.nativeElement.textContent).toContain('Enrolled for daily texts');
+    await fixture.componentInstance.toggle('shared');
+    expect(user()?.subscriptions).not.toContain('shared');
+  });
+
+  it('offers suggestions only to Premium members and validates blank content', async () => {
+    const shared = { id: 'shared', name: 'Science', description: '', itemCount: 1 };
+    fixture.componentInstance.defaults.set([shared]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Suggest Content');
+    fixture.componentInstance.suggest(shared);
+    await fixture.componentInstance.submitSuggestion(true);
+    expect(api.contribute).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.error()).toContain('Enter content');
+    fixture.componentInstance.cancelSuggestion();
+    user.update((u) => (u ? { ...u, premium: false } : null));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Suggest Content');
+    fixture.componentInstance.suggest(shared);
+    expect(fixture.componentInstance.suggesting()).toBeNull();
+  });
+
+  it('submits a suggestion and shows private review history even after Premium expires', async () => {
+    const shared = { id: 'shared', name: 'Science', description: '', itemCount: 1 };
+    fixture.componentInstance.suggest(shared);
+    fixture.componentInstance.suggestion.body = 'A useful fact';
+    const result = {
+      stackId: 'shared',
+      stackName: 'Science',
+      archived: false,
+      contribution: {
+        id: 'c1',
+        item: { type: 'FACT', body: 'A useful fact', answer: '', attribution: '' },
+        status: 'PENDING_REVIEW',
+        submittedAt: '2026-11-17T12:00:00Z',
+        reviewNote: null
+      }
+    };
+    api.contribute.mockResolvedValue(result);
+    await fixture.componentInstance.submitSuggestion(true);
+    expect(api.contribute).toHaveBeenCalledWith(
+      'shared',
+      expect.objectContaining({ body: 'A useful fact' })
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Pending Review');
+    api.contributions.mockResolvedValue([
+      {
+        ...result,
+        contribution: {
+          ...result.contribution,
+          status: 'REJECTED',
+          reviewNote: 'Please verify the source.'
+        }
+      }
+    ]);
+    user.update((u) => (u ? { ...u, premium: false } : null));
+    await fixture.componentInstance.load();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Denied');
+    expect(fixture.nativeElement.textContent).toContain('Please verify the source.');
   });
 
   afterEach(() => vi.restoreAllMocks());

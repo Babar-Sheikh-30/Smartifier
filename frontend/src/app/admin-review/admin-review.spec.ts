@@ -137,4 +137,16 @@ describe('Admin review inbox', () => {
     await component.decide(entry, true);
     expect(api.decide).toHaveBeenCalledWith(entry, true, 'Approved with feedback');
   });
+
+  it('labels shared contributions and explains that approval only creates a draft', async () => {
+    const contribution = { ...entry, contributionId: 'c1' };
+    component.entries.set([contribution]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Shared-stack suggestion');
+    expect(fixture.nativeElement.textContent).toContain('Approve as draft');
+    expect(fixture.nativeElement.textContent).toContain(entry.memberEmail);
+    await component.decide(contribution, true);
+    expect(api.decide).toHaveBeenCalledWith(contribution, true, '');
+    expect(component.notice()).toContain('approved as a draft');
+  });
 });

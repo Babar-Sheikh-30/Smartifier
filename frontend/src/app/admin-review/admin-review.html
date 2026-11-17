@@ -14,6 +14,8 @@
   <div class="inbox-toolbar">
     <p>
       Review submitted versions, leave a note, and approve or deny. Personal stacks stay private.
+      Shared contributions are accepted as drafts and require separate publication in Content
+      Management.
     </p>
     <button
       class="button button-small button-outline"
@@ -41,8 +43,8 @@
       <span class="review-summary"
         ><span class="pending-label">Pending review</span><strong>{{ entry.version.name }}</strong
         ><span class="submission-meta"
-          >Version {{ entry.version.number }} · {{ entry.version.items.length }} items · {{
-          entry.memberName }}</span
+          >{{ entry.contributionId ? 'Shared-stack suggestion' : 'Version ' + entry.version.number
+          }} · {{ entry.version.items.length }} items · {{ entry.memberName }}</span
         ></span
       >
       <span class="open-label">View submission <span aria-hidden="true">↗</span></span>
@@ -112,7 +114,8 @@
           (click)="decide(entry, true)"
           [disabled]="loading() || busy() !== null"
         >
-          {{ busy() === key(entry) ? 'Saving decision...' : 'Approve stack' }}
+          {{ busy() === key(entry) ? 'Saving decision...' : entry.contributionId ? 'Approve as
+          draft' : 'Approve stack' }}
         </button>
       </div>
     </div>

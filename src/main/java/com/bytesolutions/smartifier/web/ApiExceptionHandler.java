@@ -35,6 +35,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     ResponseEntity<Map<String, String>> validation(Exception exception, HttpServletRequest request) {
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/api/member/stacks/")
+                && request.getRequestURI().endsWith("/contributions")) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "Choose a content type and enter content up to 1,000 characters. Context is limited to 1,000 characters and attribution to 300."));
+        }
         if (request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/reviews")) {
             return ResponseEntity.badRequest().body(Map.of("message",
                     "Choose approve or deny, include the current revision, and keep the review note within 500 characters."));

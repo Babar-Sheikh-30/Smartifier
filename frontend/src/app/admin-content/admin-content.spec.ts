@@ -171,12 +171,30 @@ describe('Admin content management', () => {
         resolve = done;
       })
     );
-    const pending = component.publish(component.items(stack)[1]);
-    await component.publish(component.items(stack)[1]);
+    component.publish(component.items(stack)[1]);
+    expect(api.change).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('shared and available within Smartifier');
+    const pending = component.confirmPublication();
+    await component.confirmPublication();
     expect(api.change).toHaveBeenCalledTimes(1);
     expect(api.change).toHaveBeenCalledWith(stack, 'content/second/publish');
     resolve(stack);
     await pending;
+  });
+
+  it('can cancel publication without changing content and preserves confirmation on stale requests', async () => {
+    component.publish(component.items(stack)[1]);
+    component.cancelRemoval();
+    await component.confirmPublication();
+    expect(api.change).not.toHaveBeenCalled();
+    component.publish(component.items(stack)[1]);
+    api.change.mockRejectedValue(
+      new HttpErrorResponse({ status: 409, error: { message: 'Reload before publishing.' } })
+    );
+    await component.confirmPublication();
+    expect(component.confirmation()?.action).toBe('publish');
+    expect(component.error()).toContain('Reload before publishing');
   });
 
   it('blocks invalid content without sending it and reports failed deletion', async () => {

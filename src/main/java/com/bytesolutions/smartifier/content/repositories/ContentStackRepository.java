@@ -13,4 +13,8 @@ public interface ContentStackRepository extends MongoRepository<ContentStack, St
     Optional<ContentStack> findByIdAndOwnerId(String id, String ownerId);
     @Query("{'defaultStack': false, 'archived': {$ne: true}, 'versions.status': 'PENDING_REVIEW'}")
     List<ContentStack> findPendingReviews();
+    @Query("{'defaultStack': true, 'contributions.status': 'PENDING_REVIEW'}")
+    List<ContentStack> findPendingContributions();
+    @Query("{'defaultStack': true, 'contributions.contributorId': ?0}")
+    List<ContentStack> findContributionsByContributor(String contributorId);
 }

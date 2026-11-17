@@ -28,6 +28,53 @@ public class ContentStackService {
 
     public record Summary(String id, String name, String description, int itemCount) {}
 
+    public record ContributionResult(String stackId, String stackName, boolean archived, Contribution contribution) {}
+
+    // History remains accessible after Premium expires. Never return the destination document,
+    // which also contains other contributors' identities and unpublished admin content.
+    public List<ContributionResult> contributions(String email) {
+        var account = accounts.current(email);
+        return stacks.findContributionsByContributor(account.id()).stream()
+                .flatMap(stack -> stack.contributions().stream()
+                        .filter(c -> c.contributorId().equals(account.id()))
+                        .map(c -> new ContributionResult(stack.id(), publicName(stack), stack.archived(), c)))
+                .sorted(java.util.Comparator.comparing((ContributionResult r) -> r.contribution().submittedAt()).reversed())
+                .toList();
+    }
+
+    public ContributionResult contribute(String email, String id, Item input) {
+        var account = premium(email);
+        var stack = stacks.findById(id)
+                .filter(s -> s.defaultStack() && s.ownerId() == null && !s.archived() && s.publishedVersion() != null)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shared stack is unavailable."));
+        var item = new Item(input.type(), input.body().strip(), cleanText(input.answer()), cleanText(input.attribution()),
+                java.util.UUID.randomUUID().toString(), null, null);
+        boolean duplicate = stack.latest().items().stream().anyMatch(i -> sameContent(i, item))
+                || stack.contributions().stream().anyMatch(c -> c.status() == Status.PENDING_REVIEW && sameContent(c.item(), item));
+        if (duplicate) throw new ResponseStatusException(HttpStatus.CONFLICT, "This content already exists or is awaiting review.");
+        // Bound document growth; history is never silently discarded.
+        if (stack.contributions().size() >= 500) throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack has reached its contribution limit.");
+        var contribution = new Contribution(item.id(), account.id(), item, Instant.now(), Status.PENDING_REVIEW, null, null, null);
+        var updated = new ArrayList<>(stack.contributions());
+        updated.add(contribution);
+        try { stacks.save(stack.withContributions(updated)); }
+        catch (OptimisticLockingFailureException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This stack changed. Reload before submitting again.");
+        }
+        return new ContributionResult(stack.id(), publicName(stack), false, contribution);
+    }
+
+    private String publicName(ContentStack stack) {
+        return stack.versions().stream().filter(v -> java.util.Objects.equals(v.number(), stack.publishedVersion()) && v.status() == Status.APPROVED)
+                .map(Revision::name).findFirst().orElse("Unavailable shared stack");
+    }
+
+    private static String cleanText(String value) { return value == null ? "" : value.strip(); }
+    static boolean sameContent(Item left, Item right) {
+        return left.type() == right.type() && cleanText(left.body()).equalsIgnoreCase(cleanText(right.body()))
+                && cleanText(left.answer()).equalsIgnoreCase(cleanText(right.answer()));
+    }
+
     public List<Summary> defaults() {
         // Show the approved published version, even when a newer draft exists.
         return stacks.findByDefaultStackTrue().stream()
