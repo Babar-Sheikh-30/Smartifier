@@ -27,6 +27,10 @@ services:
       # SMS sending and scheduling remain disabled by default.
       SMARTIFIER_SMS_ENABLED: ${SMARTIFIER_SMS_ENABLED:-false}
       SMARTIFIER_SMS_SCHEDULER_ENABLED: ${SMARTIFIER_SMS_SCHEDULER_ENABLED:-false}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      TWILIO_TEST_TO: ${TWILIO_TEST_TO:-}
 
     depends_on:
       - mongo

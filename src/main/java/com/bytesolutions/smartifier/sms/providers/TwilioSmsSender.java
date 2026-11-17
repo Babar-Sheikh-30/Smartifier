@@ -12,21 +12,27 @@ import org.springframework.web.client.RestClient;
 @Service
 @ConditionalOnProperty(
         name = "smartifier.sms.provider",
-        havingValue = "textbelt"
+        havingValue = "twilio"
 )
-public class TextbeltSmsSender implements SmsSender {
+public class TwilioSmsSender implements SmsSender {
 
     private final boolean enabled;
-    private final String apiKey;
+    private final String accountSid;
+    private final String authToken;
+    private final String fromNumber;
     private final RestClient client;
 
-    public TextbeltSmsSender(
+    public TwilioSmsSender(
             @Value("${smartifier.sms.enabled:false}") boolean enabled,
-            @Value("${TEXTBELT_API_KEY:}") String apiKey) {
+            @Value("${TWILIO_ACCOUNT_SID:}") String accountSid,
+            @Value("${TWILIO_AUTH_TOKEN:}") String authToken,
+            @Value("${TWILIO_FROM_NUMBER:}") String fromNumber) {
 
         this.enabled = enabled;
-        this.apiKey = apiKey;
-        this.client = RestClient.create("https://textbelt.com");
+        this.accountSid = accountSid;
+        this.authToken = authToken;
+        this.fromNumber = fromNumber;
+        this.client = RestClient.create("https://api.twilio.com");
     }
 
     @Override
@@ -36,9 +42,11 @@ public class TextbeltSmsSender implements SmsSender {
             throw new IllegalStateException("SMS sending is disabled.");
         }
 
-        if (apiKey == null || apiKey.isBlank()) {
+        if (accountSid.isBlank()
+                || authToken.isBlank()
+                || fromNumber.isBlank()) {
             throw new IllegalStateException(
-                    "Textbelt API key is not configured.");
+                    "Twilio credentials are not configured.");
         }
 
         if (phoneNumber == null || phoneNumber.isBlank()
@@ -48,26 +56,24 @@ public class TextbeltSmsSender implements SmsSender {
         }
 
         var form = new LinkedMultiValueMap<String, String>();
-        form.add("phone", phoneNumber);
-        form.add("message", message);
-        form.add("key", apiKey);
+        form.add("To", phoneNumber);
+        form.add("From", fromNumber);
+        form.add("Body", "sms_account_alerts");
 
         Map<?, ?> response = client.post()
-                .uri("/text")
+                .uri("/2010-04-01/Accounts/{accountSid}/Messages.json",
+                        accountSid)
+                .headers(headers ->
+                        headers.setBasicAuth(accountSid, authToken))
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)
                 .retrieve()
                 .body(Map.class);
 
-        if (response == null
-                || !Boolean.TRUE.equals(response.get("success"))) {
-
-            String error = response == null
-                    ? "No response from Textbelt"
-                    : String.valueOf(response.get("error"));
-
+        if (response == null || response.get("sid") == null
+                || response.get("error_code") != null) {
             throw new IllegalStateException(
-                    "Textbelt SMS request failed: " + error);
+                    "Twilio SMS request was not accepted.");
         }
     }
 }
