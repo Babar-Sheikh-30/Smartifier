@@ -24,7 +24,7 @@ export class AdminContentComponent implements OnInit {
   readonly notice = signal('');
   readonly stackEditor = signal(false);
   readonly itemEditor = signal(false);
-  readonly confirmation = signal<{ item: AdminItem | null } | null>(null);
+  readonly confirmation = signal<{ item: AdminItem | null; action?: 'publish' } | null>(null);
   readonly types = ['FACT', 'QUOTE', 'JOKE', 'VOCABULARY'] as const;
   stackName = '';
   stackDescription = '';
@@ -185,9 +185,18 @@ export class AdminContentComponent implements OnInit {
       this.notice.set('Content saved as a draft. Publish it when ready.');
     });
   }
-  async publish(item?: AdminItem) {
+  publish(item?: AdminItem) {
+    if (!this.selected() || this.locked() || this.editing() || this.confirmation()) return;
+    this.confirmation.set({ item: item ?? null, action: 'publish' });
+    afterNextRender(() => this.document.getElementById('publication-title')?.focus(), {
+      injector: this.injector
+    });
+  }
+  async confirmPublication() {
     const stack = this.selected();
-    if (!stack || this.editing()) return;
+    const confirmation = this.confirmation();
+    if (!stack || this.editing() || confirmation?.action !== 'publish') return;
+    const item = confirmation.item;
     await this.action(async () => {
       this.replace(
         await this.api.change(
@@ -200,10 +209,11 @@ export class AdminContentComponent implements OnInit {
           ? 'Selected content published. Other draft content remains unpublished.'
           : 'Stack details published.'
       );
+      this.confirmation.set(null);
     });
   }
   requestRemoval(item: AdminItem | null = null) {
-    if (!this.locked() && !this.editing()) this.confirmation.set({ item });
+    if (!this.locked() && !this.editing() && !this.confirmation()) this.confirmation.set({ item });
   }
   cancelRemoval() {
     if (!this.locked()) this.confirmation.set(null);
@@ -211,7 +221,7 @@ export class AdminContentComponent implements OnInit {
   async remove() {
     const stack = this.selected();
     const confirmation = this.confirmation();
-    if (!stack || !confirmation) return;
+    if (!stack || !confirmation || confirmation.action === 'publish') return;
     await this.action(async () => {
       if (confirmation.item) {
         this.replace(

@@ -225,7 +225,40 @@
       </button>
     </div>
   </article>
-  } @if (confirmation(); as pending) {
+  } @if (confirmation(); as pending) { @if (pending.action === 'publish') {
+  <section
+    class="stack-editor"
+    role="alertdialog"
+    aria-modal="false"
+    aria-labelledby="publication-title"
+    aria-describedby="publication-description"
+  >
+    <h3 id="publication-title" tabindex="-1">
+      Publish {{ pending.item ? 'selected content' : 'stack details' }}?
+    </h3>
+    <p id="publication-description">
+      Publishing makes {{ pending.item ? 'this selected item and current stack details' : 'these
+      stack details' }} shared and available within Smartifier. Published content is treated as
+      shared Smartifier content and may be selected for future scheduled texts. Administrators
+      control its publication and removal. Other draft items remain unpublished.
+    </p>
+    @if (pending.item) {
+    <p class="content-text">{{ pending.item.body }}</p>
+    }
+    <div class="actions">
+      <button class="button button-small" (click)="confirmPublication()" [disabled]="locked()">
+        Confirm publication
+      </button>
+      <button
+        class="button button-small button-outline"
+        (click)="cancelRemoval()"
+        [disabled]="locked()"
+      >
+        Keep as draft
+      </button>
+    </div>
+  </section>
+  } @else {
   <section
     class="stack-editor"
     role="alertdialog"
@@ -252,5 +285,5 @@
       </button>
     </div>
   </section>
-  } }
+  } } }
 </section>

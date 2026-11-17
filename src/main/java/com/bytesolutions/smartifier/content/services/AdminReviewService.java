@@ -20,13 +20,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminReviewService {
     private final ContentStackRepository stacks;
     private final AccountRepository accounts;
+    private final AdminContentService content;
 
-    public AdminReviewService(ContentStackRepository stacks, AccountRepository accounts) {
+    public AdminReviewService(ContentStackRepository stacks, AccountRepository accounts, AdminContentService content) {
         this.stacks = stacks;
         this.accounts = accounts;
+        this.content = content;
     }
 
-    public record Entry(String stackId, long revision, String memberName, String memberEmail, Revision version) {}
+    public record Entry(String stackId, long revision, String memberName, String memberEmail, Revision version, String contributionId) {
+        public Entry(String stackId, long revision, String memberName, String memberEmail, Revision version) {
+            this(stackId, revision, memberName, memberEmail, version, null);
+        }
+    }
 
     public List<Entry> pending() {
         var queue = new ArrayList<Entry>();
@@ -40,8 +46,28 @@ public class AdminReviewService {
                 }
             }
         }
+        for (var stack : stacks.findPendingContributions()) {
+            if (!stack.defaultStack() || stack.ownerId() != null) continue;
+            for (var contribution : stack.contributions()) {
+                if (contribution.status() != Status.PENDING_REVIEW) continue;
+                var owner = accounts.findById(contribution.contributorId());
+                // Premium is checked at submission. An expiry must not hide pending history.
+                var snapshot = new Revision(0, stack.latest().name(), "Suggested item for shared stack"
+                        + (stack.archived() ? " (archived)" : ""), List.of(contribution.item()), Status.PENDING_REVIEW,
+                        contribution.submittedAt(), contribution.submittedAt(), null);
+                queue.add(new Entry(stack.id(), stack.revision(), owner.map(Account::name).orElse("Former member"),
+                        owner.map(Account::email).orElse(""), snapshot, contribution.id()));
+            }
+        }
         queue.sort(Comparator.comparing(entry -> entry.version().submittedAt(), Comparator.nullsLast(Comparator.naturalOrder())));
         return queue;
+    }
+
+    public void decideContribution(String id, String contributionId, long expectedRevision, boolean approved, String note, String email) {
+        var reviewer = accounts.findByEmail(email)
+                .filter(a -> a.role() == Account.Role.ADMIN)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Administrator access required."));
+        content.reviewContribution(id, contributionId, expectedRevision, approved, note, reviewer.id());
     }
 
     public void decide(String id, int number, long expectedRevision, boolean approved, String note) {

@@ -18,6 +18,13 @@ public class AdminReviewController {
 
     @GetMapping public List<AdminReviewService.Entry> pending() { return reviews.pending(); }
 
+    @PostMapping("/{stackId}/contributions/{contributionId}/decision")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void decideContribution(java.security.Principal user, @PathVariable String stackId,
+            @PathVariable String contributionId, @Valid @RequestBody Decision decision) {
+        reviews.decideContribution(stackId, contributionId, decision.expectedRevision(), decision.approved(), decision.note(), user.getName());
+    }
+
     @PostMapping("/{stackId}/versions/{number}/decision")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void decide(@PathVariable String stackId, @PathVariable int number, @Valid @RequestBody Decision decision) {

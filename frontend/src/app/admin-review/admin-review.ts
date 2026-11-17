@@ -38,7 +38,7 @@ export class AdminReviewComponent implements OnInit {
     void this.load();
   }
   key(entry: ReviewEntry) {
-    return `${entry.stackId}:${entry.version.number}`;
+    return `${entry.stackId}:${entry.contributionId ?? entry.version.number}`;
   }
   private report(error: unknown) {
     this.error.set(
@@ -92,7 +92,9 @@ export class AdminReviewComponent implements OnInit {
       delete this.notes[key];
       delete this.reasons[key];
       this.notice.set(
-        `${entry.version.name}, version ${entry.version.number}, ${approved ? 'approved' : 'denied'}. The member can see your decision in their stack history.`
+        entry.contributionId
+          ? `${entry.version.name}: contribution ${approved ? 'approved as a draft. Publish the selected item in Content Management when ready' : 'denied'}. The contributor can see your feedback.`
+          : `${entry.version.name}, version ${entry.version.number}, ${approved ? 'approved' : 'denied'}. The member can see your decision in their stack history.`
       );
       // Other submissions for this stack need its updated database revision.
       await this.refresh();

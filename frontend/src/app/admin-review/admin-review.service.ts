@@ -5,6 +5,7 @@ import { AuthService } from '../auth.service';
 import { StackVersion } from '../member-stacks/stack.service';
 
 export interface ReviewEntry {
+  contributionId?: string | null;
   stackId: string;
   revision: number;
   memberName: string;
@@ -24,7 +25,11 @@ export class AdminReviewService {
   async decide(entry: ReviewEntry, approved: boolean, note: string) {
     return firstValueFrom(
       this.http.post<void>(
-        `${this.base}/${encodeURIComponent(entry.stackId)}/versions/${entry.version.number}/decision`,
+        `${this.base}/${encodeURIComponent(entry.stackId)}/${
+          entry.contributionId
+            ? `contributions/${encodeURIComponent(entry.contributionId)}`
+            : `versions/${entry.version.number}`
+        }/decision`,
         { expectedRevision: entry.revision, approved, note: note.trim() },
         { headers: await this.auth.headers() }
       )

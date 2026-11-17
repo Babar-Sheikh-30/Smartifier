@@ -46,6 +46,35 @@ public class AdminContentService {
         return append(stack, stack.latest().name(), stack.latest().description(), items, null, false);
     }
 
+    public void reviewContribution(String id, String contributionId, long expected, boolean approved,
+            String note, String reviewerId) {
+        if (!approved && (note == null || note.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A denial reason is required.");
+        }
+        // Allow denial on an archived destination, but never approval or draft insertion.
+        var raw = stacks.findById(id).filter(s -> s.defaultStack() && s.ownerId() == null)
+                .orElseThrow(() -> missing("Destination stack not found."));
+        var stack = identified(raw);
+        if (stack.revision() == null || stack.revision() != expected) throw conflict("This submission has changed. Refresh the queue.");
+        var contribution = stack.contributions().stream().filter(c -> c.id().equals(contributionId)).findFirst()
+                .orElseThrow(() -> missing("Contribution not found."));
+        if (contribution.status() != Status.PENDING_REVIEW) throw conflict("This contribution was already reviewed.");
+        if (approved && (stack.archived() || stack.publishedVersion() == null)) throw conflict("Destination stack is unavailable. Deny this contribution instead.");
+        if (approved && stack.latest().items().stream().anyMatch(i -> ContentStackService.sameContent(i, contribution.item()))) {
+            throw conflict("This content already exists in the destination. Deny the duplicate instead.");
+        }
+        var reviewed = new Contribution(contribution.id(), contribution.contributorId(), contribution.item(),
+                contribution.submittedAt(), approved ? Status.APPROVED : Status.REJECTED, Instant.now(), reviewerId, text(note));
+        var updated = stack.withContributions(stack.contributions().stream()
+                .map(c -> c.id().equals(contributionId) ? reviewed : c).toList());
+        if (!approved) { save(updated); return; }
+        if (stack.latest().items().size() >= 50) throw conflict("A stack can contain at most 50 items.");
+        var items = new ArrayList<>(stack.latest().items());
+        items.add(contribution.item());
+        // One save atomically records approval and adds an unpublished working item.
+        append(updated, stack.latest().name(), stack.latest().description(), items, null, false);
+    }
+
     public ContentStack edit(String id, String itemId, long expected, Item input) {
         var stack = current(id, expected);
         item(stack.latest().items(), itemId);
@@ -82,7 +111,7 @@ public class AdminContentService {
     public void remove(String id, long expected) {
         var stack = current(id, expected);
         save(new ContentStack(stack.id(), null, true, null, null, stack.publishedVersion(),
-                stack.versions(), stack.revision(), true));
+                stack.versions(), stack.revision(), true, stack.contributions()));
     }
 
     private ContentStack current(String id, long expected) {
@@ -121,7 +150,7 @@ public class AdminContentService {
         }
         // Keep the complete working set last, even after publishing a single item.
         versions.add(version(number, name, description, working, Status.DRAFT));
-        return save(new ContentStack(stack.id(), null, true, null, null, publishedVersion, versions, stack.revision()));
+        return save(new ContentStack(stack.id(), null, true, null, null, publishedVersion, versions, stack.revision(), false, stack.contributions()));
     }
 
     private ContentStack save(ContentStack stack) {
@@ -160,7 +189,7 @@ public class AdminContentService {
             return new Revision(v.number(), v.name(), v.description(), items, v.status(), v.createdAt(), v.submittedAt(), v.reviewNote());
         }).toList();
         return new ContentStack(stack.id(), stack.ownerId(), stack.defaultStack(), stack.sourceStackId(), stack.sourceVersion(),
-                stack.publishedVersion(), versions, stack.revision(), stack.archived());
+                stack.publishedVersion(), versions, stack.revision(), stack.archived(), stack.contributions());
     }
 
     private ResponseStatusException missing(String message) { return new ResponseStatusException(HttpStatus.NOT_FOUND, message); }

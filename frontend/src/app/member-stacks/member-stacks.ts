@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import {
   ContentItem,
+  ContributionResult,
   DefaultStack,
   PersonalStack,
   StackService,
@@ -24,6 +25,9 @@ export class MemberStacksComponent implements OnInit {
   private readonly document = inject(DOCUMENT);
   readonly defaults = signal<DefaultStack[]>([]);
   readonly personal = signal<PersonalStack[]>([]);
+  readonly contributions = signal<ContributionResult[]>([]);
+  readonly suggesting = signal<DefaultStack | null>(null);
+  suggestion: ContentItem = this.emptyItem();
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly error = signal('');
@@ -49,17 +53,19 @@ export class MemberStacksComponent implements OnInit {
 
   async load() {
     // Keep a refresh from replacing data while the member is editing or saving.
-    if (this.busy() || this.editorOpen() || this.removing()) return;
+    if (this.busy() || this.editorOpen() || this.removing() || this.suggesting()) return;
     this.loading.set(true);
     this.error.set('');
     try {
-      const [defaults, personal] = await Promise.all([
+      const [defaults, personal, contributions] = await Promise.all([
         // Free members can browse defaults; personal stacks require premium access.
         this.api.defaults(),
-        this.auth.user()?.premium ? this.api.personal() : Promise.resolve([])
+        this.auth.user()?.premium ? this.api.personal() : Promise.resolve([]),
+        this.api.contributions()
       ]);
       this.defaults.set(defaults);
       this.personal.set(personal);
+      this.contributions.set(contributions);
     } catch (error) {
       this.report(error);
     } finally {
@@ -98,18 +104,68 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async toggle(id: string) {
-    if (this.removing()) return;
+    if (this.removing() || this.suggesting()) return;
     await this.action(async () => {
       const subscribe = !this.subscribed(id);
       await this.auth.subscribe(id, subscribe);
       this.notice.set(
-        subscribe ? 'Subscription saved. Text delivery is coming soon.' : 'Unsubscribed.'
+        subscribe
+          ? 'Enrolled for this stack. Daily knowledge texts are not ready yet; your choice is saved.'
+          : 'Daily texts stopped for this stack.'
       );
     });
   }
 
+  suggest(stack: DefaultStack) {
+    if (
+      !this.auth.user()?.premium ||
+      this.busy() ||
+      this.loading() ||
+      this.editorOpen() ||
+      this.removing() ||
+      this.suggesting()
+    )
+      return;
+    this.suggestion = this.emptyItem();
+    this.suggesting.set(stack);
+    this.error.set('');
+    this.notice.set('');
+    this.focusElement('suggestion-body');
+  }
+
+  cancelSuggestion() {
+    if (!this.busy()) {
+      this.suggesting.set(null);
+      this.error.set('');
+    }
+  }
+
+  async submitSuggestion(valid: boolean) {
+    const stack = this.suggesting();
+    if (!stack || this.busy()) return;
+    if (
+      !valid ||
+      !this.suggestion.body.trim() ||
+      this.suggestion.body.length > 1000 ||
+      this.suggestion.answer.length > 1000 ||
+      this.suggestion.attribution.length > 300
+    ) {
+      this.error.set('Enter content and check the field length limits before submitting.');
+      return;
+    }
+    await this.action(async () => {
+      const saved = await this.api.contribute(stack.id, {
+        ...this.suggestion,
+        body: this.suggestion.body.trim()
+      });
+      this.contributions.update((entries) => [saved, ...entries]);
+      this.suggesting.set(null);
+      this.notice.set('Content submitted. Pending Review; the shared stack has not changed.');
+    });
+  }
+
   start(stack: PersonalStack | null = null, version?: StackVersion) {
-    if (this.busy() || this.editorOpen() || this.removing()) return;
+    if (this.busy() || this.editorOpen() || this.removing() || this.suggesting()) return;
     this.populate(stack, version);
   }
 
@@ -162,7 +218,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async copy(id: string) {
-    if (this.removing() || this.editorOpen()) return;
+    if (this.removing() || this.editorOpen() || this.suggesting()) return;
     await this.action(async () => {
       const stack = await this.api.copy(id);
       this.replace(stack);
@@ -214,7 +270,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async submit(stack: PersonalStack) {
-    if (this.removing() || this.editorOpen()) return;
+    if (this.removing() || this.editorOpen() || this.suggesting()) return;
     await this.action(async () => {
       this.replace(await this.api.submit(stack));
       this.notice.set('Submitted for admin approval. This version is now read-only.');
@@ -222,7 +278,7 @@ export class MemberStacksComponent implements OnInit {
   }
 
   async cancelSubmission(stack: PersonalStack, version: StackVersion) {
-    if (this.editorOpen() || this.removing()) return;
+    if (this.editorOpen() || this.removing() || this.suggesting()) return;
     await this.action(async () => {
       this.replace(await this.api.cancelSubmission(stack, version.number));
       this.notice.set(
@@ -232,7 +288,8 @@ export class MemberStacksComponent implements OnInit {
   }
 
   requestRemoval(stack: PersonalStack) {
-    if (this.busy() || this.loading() || this.editorOpen() || this.removing()) return;
+    if (this.busy() || this.loading() || this.editorOpen() || this.removing() || this.suggesting())
+      return;
     this.removing.set(stack);
     this.error.set('');
     this.notice.set('');
@@ -259,7 +316,7 @@ export class MemberStacksComponent implements OnInit {
       if (this.savedStackId() === stack.id) this.savedStackId.set(null);
       this.removing.set(null);
       this.notice.set(
-        'Personal stack removed. Its subscriptions and pending approval requests are stopped.'
+        'Personal stack removed. Its daily texts and pending approval requests are stopped.'
       );
     });
   }

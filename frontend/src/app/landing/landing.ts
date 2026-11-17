@@ -20,8 +20,7 @@ export class LandingComponent {
     },
     {
       name: 'Learning habits',
-      message:
-        'Try recalling what you learned before rereading it. Retrieval practice helps strengthen memory.'
+      message: 'Well done is better than well said. - Benjamin Franklin'
     }
   ];
   readonly selectedStack = signal(this.stacks[0]);

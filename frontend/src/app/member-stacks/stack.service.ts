@@ -44,6 +44,19 @@ export interface StackEdit {
   expectedRevision: number;
 }
 
+export interface ContributionResult {
+  stackId: string;
+  stackName: string;
+  archived: boolean;
+  contribution: {
+    id: string;
+    item: ContentItem;
+    submittedAt: string;
+    status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+    reviewNote: string | null;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class StackService {
   private readonly http = inject(HttpClient);
@@ -55,6 +68,18 @@ export class StackService {
   }
   personal() {
     return firstValueFrom(this.http.get<PersonalStack[]>(this.base));
+  }
+  contributions() {
+    return firstValueFrom(this.http.get<ContributionResult[]>(`${this.base}/contributions`));
+  }
+  async contribute(stackId: string, item: ContentItem) {
+    return firstValueFrom(
+      this.http.post<ContributionResult>(
+        `${this.base}/${encodeURIComponent(stackId)}/contributions`,
+        { item },
+        { headers: await this.auth.headers() }
+      )
+    );
   }
   private async post(path: string, body: unknown) {
     return firstValueFrom(

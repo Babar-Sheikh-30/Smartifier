@@ -14,22 +14,22 @@
 <main id="home">
   <section class="hero wrap" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <p class="eyebrow"><span class="status-dot"></span> A LITTLE KNOWLEDGE, DELIVERED BY TEXT</p>
-      <h1 id="hero-title">Stay curious.<br />Get <span class="accent">Smartifier.</span></h1>
+      <p class="eyebrow">
+        <span class="status-dot"></span> BITE-SIZED KNOWLEDGE, EVERYDAY CURIOSITY
+      </p>
+      <h1 id="hero-title">Make room for<br /><span class="accent">a little learning.</span></h1>
       <p class="intro">
-        Become a member, subscribe to a knowledge stack, and receive bite-sized knowledge in text
-        messages. Choose a subject that interests you and keep learning from your phone.
+        Smartifier turns your interests into bite-sized knowledge stacks. Choose facts, words,
+        quotes, or jokes and make a small moment of discovery part of your day. Scheduled knowledge
+        texts are being prepared.
       </p>
       <div class="hero-actions">
-        <a class="button" href="#stacks"
-          >Explore knowledge stacks <span aria-hidden="true">↗</span></a
-        >
-        <a class="text-link" href="#membership"
-          >Compare memberships <span aria-hidden="true">↓</span></a
-        >
+        <a class="button" href="/register">Get started free <span aria-hidden="true">↗</span></a>
+        <a class="text-link" href="/login">Log in <span aria-hidden="true">↓</span></a>
       </div>
       <p class="hero-note">
-        Limited messages for members. More messages and customization with Premium.
+        Daily knowledge texts are not ready yet. You can save your stack choices now. Future
+        delivery will require a saved mobile number, SMS opt-in, and enabled delivery.
       </p>
     </div>
     <div class="demo-scene" id="demo">
@@ -56,12 +56,40 @@
       </div>
     </div>
   </section>
+  <section class="features why wrap" aria-labelledby="why-title">
+    <div class="section-heading">
+      <p class="eyebrow">WHY SMARTIFIER?</p>
+      <h2 id="why-title">Learning that fits around your day.</h2>
+      <p>You do not need a long study session to explore something interesting.</p>
+    </div>
+    <div class="feature-grid">
+      <article>
+        <span class="feature-icon" aria-hidden="true">01</span>
+        <h3>Less to fit in</h3>
+        <p>A short fact or a new word gives you something to think about between everyday tasks.</p>
+      </article>
+      <article>
+        <span class="feature-icon" aria-hidden="true">02</span>
+        <h3>Your interests lead</h3>
+        <p>Choose the knowledge stacks you enjoy. Keep your learning relevant to your curiosity.</p>
+      </article>
+      <article>
+        <span class="feature-icon" aria-hidden="true">03</span>
+        <h3>A familiar routine</h3>
+        <p>
+          A fact or a new word can fit into a small break. Choose something interesting to explore
+          as part of your day.
+        </p>
+      </article>
+    </div>
+  </section>
   <section class="features wrap" id="stacks" aria-labelledby="stacks-title">
     <div class="section-heading">
       <p class="eyebrow">FOLLOW YOUR CURIOSITY</p>
-      <h2 id="stacks-title">A knowledge stack is a subject you subscribe to.</h2>
+      <h2 id="stacks-title">A small discovery for every kind of curiosity.</h2>
       <p>
-        Members receive text messages from their chosen stack. Explore these illustrative examples.
+        Knowledge stacks collect related content. Explore examples from the built-in stacks,
+        including facts, vocabulary, quotes, and jokes.
       </p>
     </div>
     <div class="feature-grid">
@@ -95,22 +123,25 @@
         <span>01</span>
         <div>
           <h3>Become a member</h3>
-          <p>Membership gives you access to knowledge-stack subscriptions.</p>
+          <p>Create a free account and save your mobile number.</p>
         </div>
       </li>
       <li>
         <span>02</span>
         <div>
-          <h3>Subscribe to a knowledge stack</h3>
-          <p>Choose a subject you want to learn about.</p>
+          <h3>Choose Get Daily Text</h3>
+          <p>
+            Choose the stacks that interest you, then enable SMS Notifications in your dashboard.
+          </p>
         </div>
       </li>
       <li>
         <span>03</span>
         <div>
-          <h3>Receive knowledge by text</h3>
+          <h3>Save your choices</h3>
           <p>
-            Get messages from your subscribed stack, within your membership's message allowance.
+            Your choices and SMS preference are saved. Daily knowledge texts are not ready yet. You
+            can update your choices or stop enrollment at any time in your dashboard.
           </p>
         </div>
       </li>
@@ -120,32 +151,42 @@
     <div class="section-heading">
       <p class="eyebrow">YOUR MEMBERSHIP, YOUR LEARNING</p>
       <h2 id="membership-title">Make more room for learning with Premium.</h2>
-      <p>Both memberships bring knowledge-stack messages to your phone.</p>
+      <p>Start with shared stacks. Upgrade when you want to create and contribute.</p>
     </div>
     <div class="membership-grid">
       <article class="membership-card">
         <p class="eyebrow">MEMBER</p>
         <h3>Knowledge by text</h3>
         <ul>
-          <li>Subscribe to a knowledge stack</li>
-          <li>Receive text messages from that stack</li>
-          <li>A limited text-message allowance</li>
+          <li>Choose from active shared knowledge stacks</li>
+          <li>Save enrollment and SMS preferences for future knowledge texts</li>
+          <li>Manage your chosen stacks and SMS preference</li>
         </ul>
       </article>
       <article class="membership-card premium">
         <p class="eyebrow">PREMIUM MEMBER</p>
         <h3>More ways to make it yours</h3>
         <ul>
-          <li>Knowledge-stack subscriptions</li>
-          <li>A higher text-message allowance</li>
-          <li>More customization options</li>
+          <li>Everything included with free membership</li>
+          <li>Create personal stacks and customize independent copies</li>
+          <li>Suggest shared-stack content for admin review</li>
+          <li>See saved versions and review feedback</li>
         </ul>
       </article>
     </div>
+    <p class="membership-note">
+      Review the configured Premium price securely in Stripe Checkout before paying.
+    </p>
+  </section>
+  <section class="final-cta wrap" aria-labelledby="start-title">
+    <p class="eyebrow">START WITH CURIOSITY</p>
+    <h2 id="start-title">Your next discovery can be a small one.</h2>
+    <p>Create a free account, explore the stacks, and choose what you want to learn.</p>
+    <a class="button" href="/register">Create your account</a>
   </section>
 </main>
 <footer class="wrap">
   <a class="brand" href="#home">Smartifier<span class="brand-dot">.</span></a>
-  <p>Knowledge stacks. Delivered by text. Built by Byte Solutions.</p>
+  <p>Knowledge stacks. Small discoveries. Built by Byte Solutions.</p>
   <span>© {{ year }} Smartifier</span>
 </footer>

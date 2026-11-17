@@ -113,4 +113,19 @@ describe('StackService', () => {
     request.flush(null);
     await pending;
   });
+
+  it('submits individual content with CSRF and loads only the current member history', async () => {
+    const item = { type: 'FACT' as const, body: 'Fact', answer: '', attribution: '' };
+    const pending = service.contribute('shared/one', item);
+    await Promise.resolve();
+    const request = http.expectOne('/api/member/stacks/shared%2Fone/contributions');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ item });
+    expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('token');
+    request.flush({ contribution: { id: 'c1' } });
+    await pending;
+    const history = service.contributions();
+    http.expectOne('/api/member/stacks/contributions').flush([]);
+    await expect(history).resolves.toEqual([]);
+  });
 });

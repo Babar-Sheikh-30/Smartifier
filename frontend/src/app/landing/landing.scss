@@ -34,6 +34,33 @@
   color: var(--muted);
   margin-top: 21px;
 }
+.why .feature-grid article {
+  background: #f1f4eb;
+  border-radius: 15px;
+  padding: 24px;
+}
+.why .feature-icon {
+  font-size: 15px;
+  font-weight: 700;
+}
+.membership-note {
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.final-cta {
+  padding: 40px 24px;
+  text-align: center;
+  background: #eef1e5;
+  border-radius: 18px;
+}
+.final-cta p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.final-cta .button {
+  margin-top: 16px;
+}
 /* Knowledge-stack message preview */
 .demo-scene {
   position: relative;
@@ -342,6 +369,7 @@ footer > span {
   }
   .hero-actions {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     gap: 18px;
   }

@@ -23,6 +23,20 @@ public class ContentStackController {
     @GetMapping("/defaults")
     public List<ContentStackService.Summary> defaults() { return stacks.defaults(); }
 
+    public record Suggestion(@NotNull @Valid ContentStack.Item item) {}
+
+    @GetMapping("/contributions")
+    public List<ContentStackService.ContributionResult> contributions(Principal user) {
+        return stacks.contributions(user.getName());
+    }
+
+    @PostMapping("/{id}/contributions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ContentStackService.ContributionResult contribute(Principal user, @PathVariable String id,
+            @Valid @RequestBody Suggestion suggestion) {
+        return stacks.contribute(user.getName(), id, suggestion.item());
+    }
+
     @GetMapping
     public List<ContentStack> personal(Principal user) { return stacks.personal(user.getName()); }
 
