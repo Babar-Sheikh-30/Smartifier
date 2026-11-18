@@ -1,0 +1,57 @@
+@use '../shared/account';
+
+:host {
+  display: block;
+  margin-top: 32px;
+}
+h2 {
+  font-size: 24px;
+}
+p,
+li {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+fieldset {
+  border: 1px solid #e3e7db;
+  border-radius: 12px;
+  padding: 20px;
+  margin-block: 20px;
+}
+legend {
+  font-weight: 600;
+}
+select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d8dece;
+  border-radius: 6px;
+  background: white;
+  margin-bottom: 16px;
+  font: inherit;
+}
+.review {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f6f8f1;
+  border: 1px solid #d8dece;
+  border-radius: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-block: 20px;
+}
+.confirmation input {
+  width: auto;
+  margin-top: 4px;
+}
+li {
+  margin-block: 14px;
+}

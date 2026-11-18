@@ -1,21 +1,122 @@
 <header class="navigation wrap">
   <a class="brand" routerLink="/">Smartifier<span class="brand-dot">.</span></a>
-  <button class="button button-small button-outline" (click)="logout()" [disabled]="busy()">
+  <button
+    class="button button-small button-outline"
+    type="button"
+    (click)="logout()"
+    [disabled]="busy()"
+  >
     {{ busy() ? 'Logging out…' : 'Log out' }}
   </button>
 </header>
-<main class="account-page wrap">
+<main class="account-page wrap dashboard">
   @if (auth.user(); as user) {
-  <section class="account-card dashboard-card">
-    <p class="eyebrow">
-      {{ user.role === 'ADMIN' ? 'ADMIN DASHBOARD' : user.premium ? 'PREMIUM MEMBER' : 'FREE MEMBER'
-      }}
-    </p>
-    <h1>Welcome, {{ user.name }}.</h1>
-    <p class="account-intro">
-      {{ user.role === 'ADMIN' ? 'Your administration dashboard is ready.' : 'Welcome to your
-      Smartifier account.' }}
-    </p>
+  <header class="dashboard-heading">
+    <div>
+      <p class="eyebrow">{{ user.role === 'ADMIN' ? 'Administration' : 'Member dashboard' }}</p>
+      <h1>Welcome, {{ user.name }}.</h1>
+    </div>
+    <span class="account-badge"
+      >{{ user.role === 'ADMIN' ? 'Administrator' : user.premium ? 'Premium member' : 'Free member'
+      }}</span
+    >
+  </header>
+
+  <div
+    class="dashboard-tabs"
+    role="tablist"
+    aria-label="Dashboard sections"
+    (keydown)="navigateTabs($event)"
+  >
+    @for (tab of tabs(); track tab.id) {
+    <button
+      type="button"
+      role="tab"
+      [id]="'tab-' + tab.id"
+      [attr.aria-controls]="'panel-' + tab.id"
+      [attr.aria-selected]="activeTab() === tab.id"
+      [tabIndex]="activeTab() === tab.id ? 0 : -1"
+      (click)="selectTab(tab.id)"
+    >
+      {{ tab.label }}
+    </button>
+    }
+  </div>
+
+  @if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+  } @for (tab of tabs(); track tab.id) {
+  <section
+    class="account-card dashboard-card"
+    role="tabpanel"
+    [id]="'panel-' + tab.id"
+    [attr.aria-labelledby]="'tab-' + tab.id"
+    [hidden]="activeTab() !== tab.id"
+    tabindex="0"
+  >
+    @defer (when activeTab() === tab.id) { @switch (tab.id) { @case ('stacks') { @if (!user.premium)
+    {
+    <div class="upgrade-link">
+      <span>Premium includes a personal stack editor.</span>
+      <button
+        class="button button-small button-outline"
+        type="button"
+        (click)="selectTab('billing', true)"
+      >
+        View Premium
+      </button>
+    </div>
+    }
+    <bs-member-stacks />
+    } @case ('billing') { <bs-member-billing /> } @case ('review') { <bs-admin-review /> } @case
+    ('content') { <bs-admin-content /> } @case ('pricing') { <bs-admin-pricing /> } @case
+    ('notifications') {
+    <section class="sms-notifications" aria-labelledby="sms-title">
+      <h2 id="sms-title">SMS Notifications</h2>
+      <p class="field-hint">
+        Choose whether you want to receive recurring educational text messages
+        from your chosen Smartifier knowledge stacks.
+      </p>
+
+      @if (smsLoading()) {
+      <p class="field-hint" role="status">Loading SMS preferences...</p>
+      } @else {
+      <form (ngSubmit)="saveSmsSettings()">
+        <label for="sms-opt-in" class="sms-option">
+          <input
+            id="sms-opt-in"
+            name="smsOptedIn"
+            type="checkbox"
+            [ngModel]="smsOptedIn()"
+            (ngModelChange)="smsOptedIn.set($event)"
+            [disabled]="smsSaving() || busy()"
+          />
+          I agree to receive recurring Smartifier educational SMS messages at my registered mobile
+          number.
+        </label>
+
+        <p class="field-hint">
+          Message frequency may vary. Message and data rates may apply. You can disable
+          notifications here at any time.
+        </p>
+
+        <p class="field-hint">
+          Knowledge text delivery is not ready yet. This saves your SMS preference;
+          it does not send a message immediately.
+        </p>
+
+        <button class="button button-small" type="submit" [disabled]="smsSaving() || busy()">
+          {{ smsSaving() ? 'Saving...' : 'Save SMS preference' }}
+        </button>
+      </form>
+      } @if (smsNotice()) {
+      <p class="form-success" role="status">{{ smsNotice() }}</p>
+      } @if (smsError()) {
+      <p class="form-error" role="alert">{{ smsError() }}</p>
+      }
+    </section>
+    } @case ('profile') {
+    <h2>Account details</h2>
     <dl class="profile-details">
       <dt>Email</dt>
       <dd>{{ user.email }}</dd>
@@ -23,14 +124,8 @@
       <dt>Mobile number</dt>
       <dd>{{ user.phoneNumber || 'No mobile number on file' }}</dd>
       }
-      <dt>Account type</dt>
-      <dd>
-        {{ user.role === 'ADMIN' ? 'Administrator' : user.premium ? 'Premium member' : 'Free member'
-        }}
-      </dd>
     </dl>
-    @if (user.role === 'ADMIN') { <bs-admin-review /><bs-admin-content /> } @if (user.role ===
-    'MEMBER') {
+    @if (user.role === 'MEMBER') {
     <form #phoneForm="ngForm" (ngSubmit)="savePhone()">
       <label for="member-phone">Update your mobile number</label>
       <input
@@ -56,82 +151,9 @@
         {{ saving() === 'phone' ? 'Saving...' : 'Save number' }}
       </button>
     </form>
-
-    <!-- SMS Notifications: new member preference section -->
-    <section class="sms-notifications" aria-labelledby="sms-title">
-      <h2 id="sms-title">SMS Notifications</h2>
-      <p class="field-hint">
-        Choose whether you want to receive recurring educational text messages
-        from your chosen Smartifier knowledge stacks.
-      </p>
-
-      @if (smsLoading()) {
-      <p class="field-hint" role="status">Loading SMS preferences...</p>
-      } @else {
-      <form (ngSubmit)="saveSmsSettings()">
-        <label for="sms-opt-in">
-          <input
-            id="sms-opt-in"
-            name="smsOptedIn"
-            type="checkbox"
-            [ngModel]="smsOptedIn()"
-            (ngModelChange)="smsOptedIn.set($event)"
-            [disabled]="smsSaving() || busy()"
-          />
-          I agree to receive recurring Smartifier educational SMS messages
-          at my registered mobile number.
-        </label>
-
-        <p class="field-hint">
-          Message frequency may vary. Message and data rates may apply.
-          You can disable notifications here at any time.
-        </p>
-
-        <p class="field-hint">
-          Knowledge text delivery is not ready yet. This saves your SMS preference;
-          it does not send a message immediately.
-        </p>
-
-        <button
-          class="button button-small"
-          type="submit"
-          [disabled]="smsSaving() || busy()"
-        >
-          {{ smsSaving() ? 'Saving...' : 'Save SMS preference' }}
-        </button>
-      </form>
-      }
-
-      @if (smsNotice()) {
-      <p class="form-success" role="status">{{ smsNotice() }}</p>
-      }
-
-      @if (smsError()) {
-      <p class="form-error" role="alert">{{ smsError() }}</p>
-      }
-    </section>
-    <!-- End SMS Notifications -->
-
-    @if (!user.premium) {
-    <section class="premium-banner" aria-labelledby="premium-title">
-      <div>
-        <p class="eyebrow">GO PREMIUM</p>
-        <h2 id="premium-title">Keep your curiosity growing.</h2>
-        <p>Continue to Stripe to review your premium price and pay securely.</p>
-      </div>
-      <button class="button" (click)="payForPremium()" [disabled]="paying() || busy()">
-        {{ paying() ? 'Opening Stripe...' : 'Pay for premium' }}
-      </button>
-    </section>
-    } @if (paymentNotice) {
-    <p class="form-success" role="status">{{ paymentNotice }}</p>
-    }
-    <bs-member-stacks />
     @if (notice()) {
     <p class="form-success" role="status">{{ notice() }}</p>
-    } } @if (error()) {
-    <p class="form-error" role="alert">{{ error() }}</p>
-    }
+    } } } } }
   </section>
-  }
+  } }
 </main>

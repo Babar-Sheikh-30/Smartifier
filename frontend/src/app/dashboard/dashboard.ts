@@ -1,5 +1,5 @@
-
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -7,6 +7,22 @@ import { FormsModule } from '@angular/forms';
 import { MemberStacksComponent } from '../member-stacks/member-stacks';
 import { AdminContentComponent } from '../admin-content/admin-content';
 import { AdminReviewComponent } from '../admin-review/admin-review';
+import { AdminPricingComponent } from '../admin-pricing/admin-pricing';
+import { MemberBillingComponent } from '../member-billing/member-billing';
+
+const profileTab = { id: 'profile', label: 'Profile' };
+const memberTabs = [
+  { id: 'stacks', label: 'My stacks' },
+  { id: 'billing', label: 'Membership & billing' },
+  { id: 'notifications', label: 'Notifications' },
+  profileTab
+];
+const adminTabs = [
+  { id: 'review', label: 'Review queue' },
+  { id: 'content', label: 'Content' },
+  { id: 'pricing', label: 'Membership pricing' },
+  profileTab
+];
 
 @Component({
   selector: 'bs-dashboard',
@@ -16,7 +32,9 @@ import { AdminReviewComponent } from '../admin-review/admin-review';
     FormsModule,
     MemberStacksComponent,
     AdminContentComponent,
-    AdminReviewComponent
+    AdminReviewComponent,
+    AdminPricingComponent,
+    MemberBillingComponent
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
@@ -24,19 +42,21 @@ import { AdminReviewComponent } from '../admin-review/admin-review';
 export class DashboardComponent {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly query = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap
+  });
+  readonly tabs = computed(() => (this.auth.user()?.role === 'ADMIN' ? adminTabs : memberTabs));
+  readonly activeTab = computed(() => {
+    const query = this.query();
+    const requested = query.get('tab') ?? (query.has('checkout') ? 'billing' : null);
+    return this.tabs().find((tab) => tab.id === requested)?.id ?? this.tabs()[0].id;
+  });
   readonly busy = signal(false);
   readonly error = signal('');
   readonly saving = signal('');
   readonly notice = signal('');
-  readonly paying = signal(false);
-  private readonly checkoutResult = inject(ActivatedRoute).snapshot.queryParamMap.get('checkout');
-  readonly paymentNotice =
-    // A checkout return does not prove payment; the server waits for Stripe's webhook.
-    this.checkoutResult === 'returned'
-      ? 'Your payment is being confirmed. If premium is not active yet, refresh this page in a few seconds.'
-      : this.checkoutResult === 'cancelled'
-        ? 'Checkout was cancelled. You can try again whenever you are ready.'
-        : '';
   phoneNumber = '';
 
   // SMS preferences: separate from existing dashboard functionality.
@@ -104,21 +124,29 @@ export class DashboardComponent {
     }
   }
 
-  async payForPremium() {
-    if (this.paying() || this.busy()) return;
-    this.paying.set(true);
-    this.error.set('');
-    try {
-      const url = await this.auth.createCheckout();
-      window.location.assign(url);
-    } catch (error) {
-      this.error.set(
-        error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
-          ? error.error.message
-          : 'Could not open Stripe checkout. Please try again.'
-      );
-      this.paying.set(false);
-    }
+  async selectTab(id: string, focusTab = false) {
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: id },
+      queryParamsHandling: 'merge'
+    });
+    if (focusTab) this.element.nativeElement.querySelector<HTMLElement>('#tab-' + id)?.focus();
+  }
+
+  navigateTabs(event: KeyboardEvent) {
+    const tabs = Array.from((event.currentTarget as HTMLElement).querySelectorAll('button'));
+    const current = tabs.indexOf(event.target as HTMLButtonElement);
+    if (current < 0) return;
+    const next = {
+      ArrowRight: (current + 1) % tabs.length,
+      ArrowLeft: (current - 1 + tabs.length) % tabs.length,
+      Home: 0,
+      End: tabs.length - 1
+    }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    tabs[next].focus();
+    void this.selectTab(this.tabs()[next].id);
   }
 
   async savePhone() {

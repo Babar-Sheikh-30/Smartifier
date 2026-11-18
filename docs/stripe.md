@@ -8,19 +8,18 @@ To set up a local test payment:
 
 1. Sign in to the [Stripe Dashboard](https://dashboard.stripe.com/) and use the account picker to create or select a **sandbox** (or select **test mode** if available). Stay in this environment for both the key and product setup.
 2. Open **API keys** in that environment and copy the secret key beginning with `sk_test_`. This integration uses the backend secret key; a `pk_test_` publishable key is not needed. Keep the secret key private, including test keys: never put it in this README, commit it, or share it in chat.
-3. Open **Product catalog**, choose **Add product**, and name it `Smartifier Premium`. Add a **One time** price, for example CAD 5.00, and save. This is simulated money in the sandbox. For a recurring membership instead, choose **Recurring** and use `subscription` for the checkout mode below.
+3. Open **Product catalog**, choose **Add product**, and name it `Smartifier Premium`. Add a **Recurring** price, for example CAD 5.00 monthly, and save. Sandbox payments use simulated money.
 4. Open the saved product's price details and copy its **Price ID**, beginning with `price_`. Use the price ID, not the product ID beginning with `prod_`.
 5. Stop the running backend with Ctrl+C. In PowerShell at the repository root, replace the placeholder values below with your sandbox key and price ID, then restart from that same terminal. These environment variables apply to that terminal and child processes; set them again when using a new terminal.
 
 ```powershell
 $env:STRIPE_SECRET_KEY = 'sk_test_your_key'
 $env:STRIPE_PRICE_ID = 'price_your_price_id'
-$env:STRIPE_CHECKOUT_MODE = 'payment'
 $env:SMARTIFIER_PUBLIC_URL = 'http://localhost:8080'
 .\scripts\start-local.ps1
 ```
 
-Use `payment` for a one-time price or `subscription` for a recurring price. The amount, currency, and billing interval come from the Stripe price; clients cannot supply a price or amount. Use a key and price from the same Stripe account and environment. Keep the secret key on the backend and out of source control. Environment variables must be set in the backend process; this project does not automatically load `.env` files.
+Use a recurring price. The amount, currency, and billing interval come from the Stripe price; clients cannot supply a price or amount. Use a key and price from the same Stripe account and environment. Keep the secret key on the backend and out of source control. Environment variables must be set in the backend process; this project does not automatically load `.env` files.
 
 Sign in as a member and click **Pay for premium**. The button creates a Checkout Session through the authenticated, CSRF-protected backend, then redirects to Stripe. Stripe returns the member to the dashboard after checkout or cancellation. For Angular development on port 4200, set `SMARTIFIER_PUBLIC_URL` to `http://localhost:4200`; in production, use your public HTTPS origin. Restart the backend after changing configuration. Missing configuration shows an availability message without contacting Stripe.
 
@@ -38,9 +37,68 @@ Stripe publishes this fake Visa card for testing. It is safe to include these de
 
 Open http://localhost:8080, sign in as a member, click **Pay for premium**, and enter these values on the hosted Stripe page. After submitting, check the same Stripe sandbox's payment list for the simulated successful payment. Keep real card details and all secret API keys out of the README and source control. See [Stripe's official test card documentation](https://docs.stripe.com/testing) and [API key documentation](https://docs.stripe.com/keys).
 
-Successful paid Checkout sessions automatically grant premium through the signed webhook at `/api/payments/stripe/webhook`. The handler accepts `checkout.session.completed` and `checkout.session.async_payment_succeeded`, verifies the raw payload signature with `STRIPE_WEBHOOK_SECRET` (including a five-minute timestamp tolerance), and requires `payment_status=paid` and the configured Smartifier price metadata. The authenticated member email is attached by the server when creating Checkout. Repeated deliveries safely set the same premium flag without replacing other account fields. Return URLs never grant access. Sessions created before this integration lack the metadata; start a new checkout to test automatic activation.
+Successful paid Checkout sessions activate Premium through the signed webhook at `/api/payments/stripe/webhook`. The handler verifies the raw payload signature with `STRIPE_WEBHOOK_SECRET` (including a five-minute timestamp tolerance) and recognizes the initial and saved Smartifier prices. The authenticated member email is attached by the server when creating Checkout; recurring checkouts also put member metadata on the Stripe subscription. Return URLs never grant access.
 
-This implements initial activation only. Subscription cancellations, failed renewals, refunds, and premium revocation are not automated yet. Use one-time `payment` mode for the current premium purchase flow. See [Stripe payment fulfillment](https://docs.stripe.com/checkout/fulfillment).
+Recurring access follows current Stripe subscription state. Failed renewals suspend Premium while the subscription is `past_due`, `unpaid`, or otherwise inactive; access returns when it is `active` and its latest invoice is paid. Immediate cancellations remove that subscription's access immediately after webhook processing. A cancellation scheduled for period end keeps access while the paid subscription remains active, then removes it when the cancellation takes effect. Another paid membership continues to provide access. Refunds and disputes are not automated. See [Stripe subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks).
+
+### Subscription lifecycle events
+
+In the Stripe Dashboard webhook destination, enable these events for the existing endpoint (keep its signing secret configured on the backend):
+
+```text
+checkout.session.completed
+checkout.session.async_payment_succeeded
+customer.subscription.created
+customer.subscription.updated
+customer.subscription.deleted
+customer.subscription.paused
+customer.subscription.resumed
+invoice.paid
+invoice.payment_succeeded
+invoice.payment_failed
+invoice.payment_action_required
+invoice.marked_uncollectible
+invoice.voided
+```
+
+The included Docker Stripe listener now forwards this list. Recreate it after updating this checkout:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile stripe up -d stripe-listener
+```
+
+Check its current signing secret after recreation and update `STRIPE_WEBHOOK_SECRET` if it changes. Production webhook destinations must have the event list updated separately in Stripe.
+
+Webhook payloads can arrive more than once or out of order. Each event prompts a fresh Stripe SDK retrieval of the subscription and its latest invoice, rather than trusting the event's old status. Per-member locks serialize access changes; each subscription is recorded independently in MongoDB. Stripe or database failures return a non-success response so Stripe can retry. Premium checks read the account's current database flag; a member may need to refresh their page to see a changed badge.
+
+Existing subscriptions can be linked through their original Smartifier Checkout Session's `client_reference_id` and recognized price metadata. On first reconciliation, completed app checkouts matching the member's billing email are imported to recognize overlapping subscriptions. Sessions without Smartifier metadata, manually granted access, or historical purchases using a different billing email need a separate audit; they cannot be reliably inferred from the old Premium boolean. A legacy subscription is first reconciled when one of its events is delivered; replay a relevant event from Stripe for subscriptions already canceled or overdue before deployment. Unrelated Stripe subscriptions and non-subscription invoices never change member access.
+
+To verify in a Stripe sandbox: buy a recurring membership, schedule cancellation and confirm access remains, then cancel it immediately and confirm access is removed. With another test membership, use a Stripe test clock to advance to a failed renewal, confirm access is suspended, then pay the latest invoice and confirm it returns. Replay an old failure/checkout event after recovery and verify it does not override Stripe's current state. Also verify that a second paid subscription retains access when another subscription ends.
+
+### Member billing
+
+In **Membership & billing**, members with a recurring subscription can choose **Update billing info** to open Stripe's payment-method update screen. **Manage or cancel** opens the full billing portal for billing name and address changes, invoices, and cancellation at the end of the current billing period. The app creates its portal configuration on first use. Webhooks reconcile access after Stripe applies a subscription change.
+
+To offer plan switches, configure a Stripe customer portal with payment-method updates, billing name and address updates, cancellation, and the recurring Premium prices members can switch to. Use prices already recognized by Smartifier and offer compatible prices in the same currency. Set `STRIPE_PORTAL_CONFIGURATION_ID` to that configuration's ID and restart the backend. Smartifier's default portal does not publish historical checkout prices as plan choices.
+
+### Admin membership pricing
+
+The admin dashboard's **Membership pricing** section uses the existing Stripe Java SDK on the backend. The secret key stays on the server. All pricing endpoints require an administrator session, and all changes require a CSRF token.
+
+- Set an amount, select CAD, USD, EUR, GBP, or AUD, and choose **Monthly** or **Yearly**. Existing subscriptions are eligible for review only when their currency matches the new price. Fixed, standard prices are supported; custom billing models remain managed in Stripe.
+- **New memberships only** creates a new recurring Stripe price and saves it as the checkout price. Existing subscriptions and pending checkouts keep their original terms.
+- **New and existing memberships** first saves the new checkout price, then opens a separate review of existing subscriptions. Nothing is changed on existing subscriptions until the admin explicitly confirms that review.
+- An admin can also choose **Review existing subscriptions** later to move remaining subscriptions onto the current price. Only subscriptions on prices previously configured or created by this app are considered. One-time purchases are not converted into subscriptions.
+
+Reviews contain up to 25 subscriptions, expire after ten minutes, and belong to the administrator who requested them. Only active, automatically charged, single-item subscriptions with quantity one are eligible. Cancellation plans, schedules, paused collection, and pending updates are left unchanged. Use **Review next batch** to continue through the list, including when a subscription in an earlier batch could not be updated. Moving to the next batch does not apply changes to the current batch. Prices displayed are base rates before taxes and discounts.
+
+Applying a reviewed change uses Stripe's `always_invoice` proration behavior and `error_if_incomplete` payment behavior. Price differences can be invoiced immediately. A monthly/yearly switch resets the billing period and can charge immediately, crediting unused time. Stripe rejects updates requiring an incomplete payment. See [Stripe's subscription update behavior](https://docs.stripe.com/api/subscriptions/update).
+
+Each subscription has its own result. Processing stops on an unexpected request failure; some earlier changes may already have succeeded. Review again to inspect current subscriptions before continuing. The backend checks current terms before updating, uses Stripe idempotency keys, prevents concurrent updates to the same subscription, and records review ownership and outcomes in MongoDB.
+
+Pricing is persisted in MongoDB and takes precedence over `STRIPE_PRICE_ID` after the first admin save. That setting supplies the initial recurring price. Historical prices remain accepted by the payment webhook so a checkout started before a price change can still activate Premium. Use separate databases for Stripe test and live environments; retain the matching account, API key, and webhook signing secret.
+
+Test both scopes in a Stripe sandbox before using live billing. Automated tests use a local fake Stripe HTTP endpoint, not a real Stripe account.
 
 ### Receive test webhooks locally
 
@@ -70,7 +128,7 @@ if (-not (Test-Path -LiteralPath .env)) {
 }
 ```
 
-In Stripe, select a sandbox. Copy its secret API key, create a premium product with a **one-time** price, and copy that price's ID. Both must belong to the same sandbox.
+In Stripe, select a sandbox. Copy its secret API key, create a premium product with a **recurring** price, and copy that price's ID. Both must belong to the same sandbox.
 
 Edit your local `.env`:
 
@@ -78,7 +136,6 @@ Edit your local `.env`:
 STRIPE_SECRET_KEY=sk_test_your_sandbox_key
 STRIPE_PRICE_ID=price_your_sandbox_price
 STRIPE_WEBHOOK_SECRET=
-STRIPE_CHECKOUT_MODE=payment
 SMARTIFIER_PUBLIC_URL=http://localhost:8080
 ```
 
@@ -147,9 +204,9 @@ An account already upgraded manually cannot demonstrate the free-to-premium tran
 | Listener never prints `Ready!` | Docker Desktop is running, network access works, and `STRIPE_SECRET_KEY` is a valid sandbox key. |
 | No event appears after paying | The listener is running and Checkout uses the same sandbox as the listener. |
 | Webhook returns HTTP 400 | The backend has the exact `whsec_...` from this listener, and you recreated the backend after editing `.env`. An incorrect system clock can also fail timestamp verification. |
-| Webhook returns HTTP 503 | `STRIPE_WEBHOOK_SECRET` or `STRIPE_PRICE_ID` is missing in the backend environment. |
+| Webhook returns HTTP 503 | Check `STRIPE_WEBHOOK_SECRET`, the backend Stripe API key, database availability, and Stripe connectivity. A concurrent membership update can also return a retryable 503. |
 | Webhook returns HTTP 409 | The Checkout member could not be found in the backend database. |
-| HTTP 200 but account stays free | Start a new Checkout from the app with a fresh free member. Confirm the payment succeeded and the configured price has not changed since Checkout began. |
+| HTTP 200 but account stays free | Start a new Checkout from the app with a fresh free member. Confirm the payment succeeded and its price is the initial price or one of the app's saved membership prices. |
 
 To inspect logs, keep their secrets private:
 
@@ -176,13 +233,11 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml --profile strip
 
 For a later session, repeat the startup commands, check the listener secret, and recreate the backend if it changed.
 
-This integration activates premium after a successful payment. SMS delivery, refunds, subscription cancellations, and failed-renewal revocation are not implemented. The guide uses one-time payment mode.
-
 References: [Stripe local webhook testing](https://docs.stripe.com/checkout/fulfillment#test-your-event-handler-locally), [webhook signature secrets](https://docs.stripe.com/events/manage-webhook-endpoints#signature-errors), and [Stripe test cards](https://docs.stripe.com/testing#cards).
 
 ### Stripe in Docker
 
-Docker Compose passes Stripe settings into the backend at runtime. Open the local `.env` file in the repository root and fill in `STRIPE_SECRET_KEY` with your sandbox key (`sk_test_...`) and `STRIPE_PRICE_ID` with the matching sandbox price (`price_...`). Use `payment` for a one-time price or `subscription` for a recurring price. `.env.example` contains the safe template; `.env` is ignored by Git and excluded from the Docker build context. Keep your key private.
+Docker Compose passes Stripe settings into the backend at runtime. Open the local `.env` file in the repository root and fill in `STRIPE_SECRET_KEY` with your sandbox key (`sk_test_...`) and `STRIPE_PRICE_ID` with the matching sandbox price (`price_...`). Use a recurring price. `.env.example` contains the safe template; `.env` is ignored by Git and excluded from the Docker build context. Keep your key private.
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d backend

@@ -1,0 +1,83 @@
+<div class="billing-header">
+  <h2>Membership &amp; billing</h2>
+  <button
+    class="button button-small button-outline"
+    type="button"
+    (click)="load()"
+    [disabled]="loading() || opening() !== null"
+  >
+    Refresh billing
+  </button>
+</div>
+
+@if (checkoutNotice) {
+<p class="form-success" role="status">{{ checkoutNotice }}</p>
+} @if (error()) {
+<p class="form-error" role="alert">{{ error() }}</p>
+} @if (opening() && opening() !== 'checkout') {
+<p role="status">Opening Stripe…</p>
+} @if (memberships(); as plans) { @for (plan of plans; track plan.id) {
+<article class="billing-card">
+  <div>
+    <h3>Smartifier Premium</h3>
+    @if (plan.amount !== null && plan.currency && plan.interval) {
+    <p>
+      {{ plan.amount / 100 | currency: plan.currency.toUpperCase() : 'code' }} / {{ plan.interval }}
+    </p>
+    }
+    <p class="status">{{ status(plan.status) }}</p>
+    @if (plan.ending) {
+    <p>
+      {{ plan.endsAt ? 'Scheduled to end on ' + (plan.endsAt * 1000 | date: 'mediumDate') + '.' :
+      'Scheduled to end at the end of the current billing period.' }}
+    </p>
+    }
+    <p>
+      Update your payment method in Stripe. Manage your subscription to edit your billing address,
+      view invoices, or cancel.
+    </p>
+  </div>
+  <div class="billing-actions">
+    <button
+      class="button button-small"
+      type="button"
+      (click)="open(plan.id, true)"
+      [disabled]="opening() !== null"
+    >
+      Update billing info
+    </button>
+    <button
+      class="button button-small button-outline"
+      type="button"
+      (click)="open(plan.id)"
+      [disabled]="opening() !== null"
+    >
+      Manage or cancel
+    </button>
+  </div>
+</article>
+} @empty { @if (auth.user()?.premium) {
+<article class="billing-card">
+  <div>
+    <h3>Smartifier Premium</h3>
+    <p>Your current Premium access is active.</p>
+  </div>
+</article>
+} @else {
+<article class="billing-card">
+  <div>
+    <h3>Upgrade to Premium</h3>
+    <p>Review the recurring price and billing period in Stripe before you subscribe.</p>
+  </div>
+  <button
+    class="button button-small"
+    type="button"
+    (click)="open()"
+    [disabled]="opening() !== null"
+  >
+    {{ opening() === 'checkout' ? 'Opening Stripe…' : 'View Premium price' }}
+  </button>
+</article>
+} } } @else if (loading()) {
+<p role="status">Loading membership billing…</p>
+}

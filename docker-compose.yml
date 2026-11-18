@@ -21,7 +21,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_CHECKOUT_MODE: ${STRIPE_CHECKOUT_MODE:-payment}
+      STRIPE_PORTAL_CONFIGURATION_ID: ${STRIPE_PORTAL_CONFIGURATION_ID:-}
       SMARTIFIER_PUBLIC_URL: ${SMARTIFIER_PUBLIC_URL:-http://localhost:8080}
 
       # SMS sending and scheduling remain disabled by default.
@@ -41,7 +41,9 @@ services:
     profiles: [stripe]
     environment:
       STRIPE_API_KEY: ${STRIPE_SECRET_KEY:-}
-    command: listen --forward-to http://backend:8080/api/payments/stripe/webhook --events checkout.session.completed,checkout.session.async_payment_succeeded
+    command: >-
+      listen --forward-to http://backend:8080/api/payments/stripe/webhook
+      --events checkout.session.completed,checkout.session.async_payment_succeeded,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed,invoice.paid,invoice.payment_succeeded,invoice.payment_failed,invoice.payment_action_required,invoice.marked_uncollectible,invoice.voided
     depends_on:
       - backend
 

@@ -20,6 +20,16 @@ export interface SmsSettings {
   optedIn: boolean;
 }
 
+export interface BillingMembership {
+  id: string;
+  status: string;
+  ending: boolean;
+  endsAt: number | null;
+  amount: number | null;
+  currency: string | null;
+  interval: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -111,6 +121,21 @@ export class AuthService {
       )
     );
     return checkout.url;
+  }
+
+  getBillingMemberships() {
+    return firstValueFrom(this.http.get<BillingMembership[]>('/api/member/payments/memberships'));
+  }
+
+  async openBillingPortal(id: string, paymentMethod = false) {
+    const portal = await firstValueFrom(
+      this.http.post<{ url: string }>(
+        `/api/member/payments/memberships/${encodeURIComponent(id)}/portal`,
+        {},
+        { headers: await this.headers(), params: { paymentMethod } }
+      )
+    );
+    return portal.url;
   }
 
   async login(email: string, password: string): Promise<Profile> {

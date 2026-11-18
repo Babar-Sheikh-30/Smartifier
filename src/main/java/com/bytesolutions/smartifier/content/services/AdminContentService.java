@@ -176,6 +176,7 @@ public class AdminContentService {
 
     // Legacy content has no IDs. Deterministic IDs are stable across reads and matching
     // snapshots; they are persisted only when an administrator saves this document.
+    //Simplify or delete the old stacks
     private ContentStack identified(ContentStack stack) {
         var versions = stack.versions().stream().map(v -> {
             Map<String, Integer> occurrences = new HashMap<>();

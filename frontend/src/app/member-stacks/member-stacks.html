@@ -4,11 +4,11 @@
   <p>Explore published stacks with a mix of facts, quotes, jokes, and vocabulary.</p>
   <p class="field-hint">
     Get Daily Text saves your stack choice. Daily knowledge texts are not ready yet. Future delivery
-    will require your mobile number, SMS opt-in above, and enabled delivery. Only published content
+    will require your mobile number, SMS opt-in in Notifications, and enabled delivery. Only published content
     can be selected.
   </p>
   @if (!auth.user()?.phoneNumber) {
-  <p class="form-error">Add your mobile number above before choosing Get Daily Text.</p>
+  <p class="form-error">Add your mobile number in Profile before choosing Get Daily Text.</p>
   } @if (loading()) {
   <p role="status">Loading your stacks...</p>
   }

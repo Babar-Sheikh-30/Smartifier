@@ -225,6 +225,29 @@
   font-size: 31px;
   color: #8b9a57;
 }
+/* Why Smartifier */
+.why {
+  padding-block: 48px 60px;
+  margin-bottom: 30px;
+  border-top: 1px solid #e3e7db;
+}
+.why .section-heading {
+  max-width: 650px;
+  margin-inline: auto;
+}
+.why .feature-icon {
+  font-size: 14px;
+  font-weight: 700;
+}
+.why-action {
+  margin-top: 36px;
+  text-align: center;
+}
+.why-action p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
 /* Features and getting started */
 .features {
   padding: 56px 0 70px;

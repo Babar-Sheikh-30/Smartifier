@@ -2,8 +2,8 @@
 FROM eclipse-temurin:25-jdk-noble AS build
 WORKDIR /workspace
 
-# install Maven and Node.js
-RUN apt-get update && apt-get install -y maven curl ca-certificates \
+# install Node.js and Maven wrapper prerequisites
+RUN apt-get update && apt-get install -y curl ca-certificates unzip \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -19,7 +19,7 @@ COPY .mvn .mvn
 COPY frontend ./frontend
 COPY src ./src
 
-RUN mvn -B -e -q -DskipTests package
+RUN sh ./mvnw -B -e -q -DskipTests package
 
 # stage 2: runtime
 FROM eclipse-temurin:25-jdk-noble

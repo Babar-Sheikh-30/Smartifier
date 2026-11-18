@@ -1,0 +1,174 @@
+<section aria-labelledby="pricing-title">
+  <p class="eyebrow">MEMBERSHIP BILLING</p>
+  <h2 id="pricing-title">Membership pricing</h2>
+  <p>Set the Premium membership price and choose who the change applies to.</p>
+  <p class="field-hint">
+    Failed renewals suspend Premium until payment succeeds. Scheduled cancellations keep access
+    until the subscription ends. One-time purchases retain their access.
+  </p>
+  <button
+    class="button button-small button-outline"
+    type="button"
+    (click)="load()"
+    [disabled]="busy()"
+  >
+    Reload pricing
+  </button>
+  @if (pricing(); as price) {
+  <p><strong>{{ price.live ? 'Live Stripe account' : 'Stripe test mode' }}</strong></p>
+  <p>
+    Current checkout: {{ price.configured ? label(price.amount, price.currency, price.interval) :
+    'Not configured' }}
+  </p>
+  @if (!price.editable) {
+  <p>This price uses a billing model not supported by this editor. Manage it in Stripe.</p>
+  } @else {
+  <form #pricingForm="ngForm" (ngSubmit)="review()">
+    <fieldset [disabled]="busy() || reviewSave()">
+      <legend>New membership terms</legend>
+      <label for="membership-amount">Price per billing period</label>
+      <input
+        id="membership-amount"
+        name="amount"
+        type="text"
+        inputmode="decimal"
+        required
+        pattern="[0-9]+([.][0-9]{1,2})?"
+        [(ngModel)]="amount"
+      />
+      <label for="membership-currency">Currency</label>
+      <select id="membership-currency" name="currency" [(ngModel)]="currency">
+        @for (code of currencies; track code) {
+        <option [value]="code">{{ code.toUpperCase() }}</option>
+        }
+      </select>
+      <label for="membership-interval">Billing period</label>
+      <select id="membership-interval" name="interval" [(ngModel)]="interval">
+        <option value="month">Monthly</option>
+        <option value="year">Yearly</option>
+      </select>
+      <label for="membership-scope">Apply to</label>
+      <select id="membership-scope" name="scope" [(ngModel)]="scope">
+        <option value="new">New memberships only</option>
+        <option value="both">New and existing memberships</option>
+      </select>
+      <p class="field-hint">
+        Existing memberships in the selected currency get a separate review before any subscription
+        is changed.
+      </p>
+      <button
+        class="button button-small"
+        type="submit"
+        [disabled]="pricingForm.invalid || !valid()"
+      >
+        Review pricing
+      </button>
+    </fieldset>
+  </form>
+  } @if (reviewSave()) {
+  <div class="review" role="region" aria-labelledby="save-pricing-title">
+    <h3 id="save-pricing-title">Confirm new membership price</h3>
+    <p>
+      {{ label(minorUnits(), currency, interval) }}. New customers will be billed automatically each
+      {{ interval }}.
+    </p>
+    <p>
+      {{ scope === 'both' ? 'Save this price, then review existing subscriptions separately.' :
+      'Existing subscriptions will keep their current price and billing period.' }}
+    </p>
+    <div class="actions">
+      <button class="button button-small" type="button" (click)="save()" [disabled]="busy()">
+        Save new membership price
+      </button>
+      <button
+        class="button button-small button-outline"
+        type="button"
+        (click)="reviewSave.set(false)"
+        [disabled]="busy()"
+      >
+        Back
+      </button>
+    </div>
+  </div>
+  } @if (price.configured && price.revision >= 0) {
+  <h3>Existing subscriptions</h3>
+  <p>
+    Review active subscriptions on previous Smartifier membership prices. One-time purchases are not
+    subscriptions.
+  </p>
+  <button
+    class="button button-small button-outline"
+    type="button"
+    (click)="reviewExisting()"
+    [disabled]="busy()"
+  >
+    Review existing subscriptions
+  </button>
+  } } @if (preview(); as review) {
+  <div class="review" aria-labelledby="migration-title">
+    <h3 id="migration-title">Review existing membership changes</h3>
+    <p>
+      New terms:
+      <strong
+        >{{ label(review.target.amount, review.target.currency, review.target.interval) }}</strong
+      >
+    </p>
+    <p>
+      {{ review.candidates.length }} subscriptions in this batch. {{ review.skipped }} skipped. {{
+      review.more ? 'More subscriptions may remain. Use Review next batch to continue.' : '' }}
+    </p>
+    <p>
+      Only active, automatically charged memberships with one item and a quantity of one are
+      included. Subscriptions with cancellation plans, schedules, paused collection, or pending
+      updates are left unchanged. Prices shown are base rates before discounts and taxes.
+    </p>
+    <ul>
+      @for (candidate of review.candidates; track candidate.id) {
+      <li>
+        <strong>{{ candidate.subscriptionId }}</strong>: {{ label(candidate.oldAmount,
+        candidate.currency, candidate.interval) }} → {{ label(review.target.amount,
+        review.target.currency, review.target.interval) }} @if (results()[candidate.id]) {
+        <p role="status">{{ results()[candidate.id] }}</p>
+        }
+      </li>
+      }
+    </ul>
+    @if (review.nextCursor) {
+    <button
+      class="button button-small button-outline"
+      type="button"
+      [disabled]="busy()"
+      (click)="reviewExisting(review.nextCursor)"
+    >
+      Review next batch
+    </button>
+    <p class="field-hint">Moving to the next batch does not apply any changes in this batch.</p>
+    } @if (review.candidates.length && !hasResults()) {
+    <p>
+      <strong>Billing effect:</strong> Stripe will invoice prorated differences now. Changing
+      monthly to yearly (or yearly to monthly) starts a new billing period and can charge
+      immediately, with credit for unused time. Changes requiring an incomplete payment will be
+      rejected.
+    </p>
+    <label class="confirmation">
+      <input type="checkbox" name="confirmExisting" [(ngModel)]="confirmed" [disabled]="busy()" />
+      I have reviewed these subscriptions and want to apply these billing changes now.
+    </label>
+    <button
+      class="button button-small"
+      type="button"
+      (click)="apply()"
+      [disabled]="busy() || !confirmed"
+    >
+      Apply to reviewed subscriptions
+    </button>
+    }
+  </div>
+  } @if (busy()) {
+  <p role="status">Working with Stripe. Keep this page open...</p>
+  } @if (notice()) {
+  <p class="form-success" role="status">{{ notice() }}</p>
+  } @if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+  }
+</section>

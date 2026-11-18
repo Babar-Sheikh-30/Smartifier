@@ -40,6 +40,10 @@ public class ApiExceptionHandler {
             return ResponseEntity.badRequest().body(Map.of("message",
                     "Choose a content type and enter content up to 1,000 characters. Context is limited to 1,000 characters and attribution to 300."));
         }
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/membership-pricing")) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "Enter a valid price, currency, and billing period. Reload pricing if its revision is missing."));
+        }
         if (request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/reviews")) {
             return ResponseEntity.badRequest().body(Map.of("message",
                     "Choose approve or deny, include the current revision, and keep the review note within 500 characters."));

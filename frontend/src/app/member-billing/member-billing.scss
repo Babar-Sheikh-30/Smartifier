@@ -1,0 +1,35 @@
+@use '../shared/account';
+
+.billing-header,
+.billing-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.billing-header h2,
+.billing-card h3 {
+  margin: 0;
+}
+.billing-card {
+  margin-top: 20px;
+  padding: clamp(16px, 3vw, 26px);
+  border: 1px solid #dce7d9;
+  border-radius: 16px;
+  background: #f5f8f2;
+}
+.billing-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.billing-card .status {
+  color: var(--green);
+  font-weight: 650;
+}
+.billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
