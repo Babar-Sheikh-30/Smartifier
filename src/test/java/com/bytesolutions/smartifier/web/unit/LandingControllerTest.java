@@ -25,7 +25,7 @@ public class LandingControllerTest {
     void testLanding_ReturnsPageViewWithTitle() {
         // Arrange
         String expectedView = "landing";
-        String expectedTitle = "Smartifier | Knowledge delivered by text";
+        String expectedTitle = "Smartifier | Find the right words when it counts";
 
         // Act
         String viewName = landingController.landing(model);

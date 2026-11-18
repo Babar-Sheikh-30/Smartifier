@@ -16,10 +16,9 @@
       <p class="eyebrow">{{ user.role === 'ADMIN' ? 'Administration' : 'Member dashboard' }}</p>
       <h1>Welcome, {{ user.name }}.</h1>
     </div>
-    <span class="account-badge"
-      >{{ user.role === 'ADMIN' ? 'Administrator' : user.premium ? 'Premium member' : 'Free member'
-      }}</span
-    >
+    @if (user.role === 'MEMBER') {
+    <span class="account-badge">{{ user.premium ? 'Premium member' : 'Free member' }}</span>
+    }
   </header>
 
   <div
@@ -73,11 +72,6 @@
     ('notifications') {
     <section class="sms-notifications" aria-labelledby="sms-title">
       <h2 id="sms-title">SMS Notifications</h2>
-      <p class="field-hint">
-        Choose whether you want to receive recurring educational text messages
-        from your chosen Smartifier knowledge stacks.
-      </p>
-
       @if (smsLoading()) {
       <p class="field-hint" role="status">Loading SMS preferences...</p>
       } @else {
@@ -101,8 +95,8 @@
         </p>
 
         <p class="field-hint">
-          Knowledge text delivery is not ready yet. This saves your SMS preference;
-          it does not send a message immediately.
+          Knowledge text delivery is not ready yet. This saves your SMS preference; it does not send
+          a message immediately.
         </p>
 
         <button class="button button-small" type="submit" [disabled]="smsSaving() || busy()">
