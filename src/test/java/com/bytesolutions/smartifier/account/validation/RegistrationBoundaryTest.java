@@ -1,6 +1,5 @@
 package com.bytesolutions.smartifier.account.validation;
 
-import com.bytesolutions.smartifier.account.controllers.AuthController;
 
 import com.bytesolutions.smartifier.account.controllers.AuthController.Registration;
 import jakarta.validation.Validation;

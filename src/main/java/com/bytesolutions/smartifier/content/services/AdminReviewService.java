@@ -1,6 +1,5 @@
 package com.bytesolutions.smartifier.content.services;
 
-import com.bytesolutions.smartifier.content.models.ContentStack;
 import com.bytesolutions.smartifier.content.repositories.ContentStackRepository;
 
 import java.util.ArrayList;
