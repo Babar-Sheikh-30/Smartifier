@@ -64,11 +64,11 @@ For watch mode, run `npm run ng -- test --watch`.
 
 ## Stripe payments
 
-See the [Stripe setup guide](docs/stripe.md) for sandbox payments, Docker configuration, test cards, and local webhook forwarding.
+Use a Stripe test key and recurring test price for local Checkout. The Stripe settings are listed in [`.env.example`](.env.example).
 
 ## Content stacks
 
-See the [content stack guide](docs/content-stacks.md) for member workspaces, admin publishing, reviews, and the MongoDB schema.
+Members can enroll in published shared stacks. Premium members can also manage personal stacks and suggest items for shared stacks. Admin approval adds a shared suggestion to the working draft. Admins publish selected items from the Content tab.
 
 ## Local accounts
 
@@ -127,7 +127,6 @@ Smartifier/
     <feature>/validation/   Request validation and input boundary tests
     <feature>/integration/  Full application tests using MongoDB
   scripts/                  Local startup and Docker admin setup
-  docs/                     Detailed feature and setup guides
   .mvn/                     Maven wrapper configuration
   mvnw / mvnw.cmd           Maven wrapper scripts
   pom.xml                   Java dependencies and combined build

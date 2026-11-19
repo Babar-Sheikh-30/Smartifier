@@ -4,6 +4,8 @@ import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.net.URI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class StripeCheckoutService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StripeCheckoutService.class);
     private final StripeClient client;
     private final MembershipPricingService pricing;
     private final String secretKey;
@@ -57,8 +60,13 @@ public class StripeCheckoutService {
                     return new Checkout(session.getUrl());
                 }
             }
-        } catch (StripeException | IllegalArgumentException exception) {
-            // Stripe responses can contain sensitive configuration details; do not expose them.
+            LOGGER.warn("Stripe Checkout returned an absent or unexpected redirect URL");
+        } catch (StripeException exception) {
+            LOGGER.warn("Stripe Checkout session creation failed (exception={}, status={}, code={}, requestId={})",
+                    exception.getClass().getSimpleName(), exception.getStatusCode(), exception.getCode(),
+                    exception.getRequestId());
+        } catch (IllegalArgumentException exception) {
+            LOGGER.warn("Stripe Checkout returned a malformed redirect URL");
         }
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "Could not open Stripe checkout. Please try again.");
